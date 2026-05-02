@@ -1,0 +1,58 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="panel entry-panel">
+        <div class="panel__header">
+            <div>
+                <h2>Entwurf bearbeiten</h2>
+                <p class="panel__intro">Speichern Sie Zwischenaenderungen sicher oder geben Sie den Entwurf nach der Validierung in die Pruefung.</p>
+            </div>
+            <a href="{% url 'form_builder:entry_detail' form_entry.id %}" class="text-link">Details anzeigen</a>
+        </div>
+
+        <div class="entry-summary">
+            <div>
+                <span class="entry-summary__label">Formular</span>
+                <strong>{{ form_entry.form.title }}</strong>
+            </div>
+            <div>
+                <span class="entry-summary__label">Bewohner</span>
+                <strong>{{ form_entry.bewohner }}</strong>
+            </div>
+            <div>
+                <span class="entry-summary__label">Status</span>
+                {% include "base/partials/status_badge.html" with status=form_entry.status label=form_entry.get_status_display %}
+            </div>
+        </div>
+
+        {% if form_entry.validation_errors.review %}
+            <div class="flash-message flash-message--warning">
+                <strong>Rueckmeldung aus der Pruefung:</strong> {{ form_entry.validation_errors.review }}
+            </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'form_builder:entry_save' form_entry.id %}" class="entry-form" novalidate>
+            {% csrf_token %}
+            {% if entry_form.non_field_errors %}
+                <div class="flash-message flash-message--error">{{ entry_form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="professional-form-grid">
+                {% for field in entry_form %}
+                    {% include "base/partials/form_field.html" with field=field %}
+                {% endfor %}
+            </div>
+
+            <div class="form-actions form-actions--split">
+                <a href="{% url 'form_builder:draft_list' %}" class="button button--ghost">Zurueck</a>
+                <div class="form-actions__group">
+                    <button type="submit" class="button button--ghost">Entwurf speichern</button>
+                    <button type="submit" formaction="{% url 'form_builder:entry_validate' form_entry.id %}" class="button button--ghost">Validieren</button>
+                    <button type="submit" formaction="{% url 'form_builder:entry_review' form_entry.id %}" class="button button--primary">In Review setzen</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

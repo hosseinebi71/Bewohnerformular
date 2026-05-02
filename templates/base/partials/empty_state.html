@@ -1,0 +1,7 @@
+<section class="empty-state">
+    <h2 class="empty-state__title">{{ title }}</h2>
+    <p class="empty-state__text">{{ text }}</p>
+    {% if action_url and action_label %}
+        <a href="{{ action_url }}" class="button button--primary">{{ action_label }}</a>
+    {% endif %}
+</section>

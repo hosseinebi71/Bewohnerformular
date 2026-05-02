@@ -1,0 +1,35 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="panel pdf-preview-panel">
+        <div class="panel__header">
+            <div>
+                <h2>PDF-Vorschau</h2>
+                <p class="panel__intro">Pruefansicht vor dem Versand. Das PDF wird erst nach Klick privat erzeugt und gespeichert.</p>
+            </div>
+            <div class="panel-actions">
+                <a href="{% url 'form_builder:entry_detail' form_entry.id %}" class="text-link">Zurueck zum Eintrag</a>
+                {% if latest_pdf_document %}
+                    <a href="{% url 'form_builder:pdf_download' latest_pdf_document.id %}" class="button button--ghost" target="_blank" rel="noopener">Letztes PDF oeffnen</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="pdf-toolbar">
+            <div>
+                <strong>{{ form_entry.form.title }}</strong>
+                <span>{{ form_entry.bewohner }} · {{ form_entry.get_status_display }}</span>
+            </div>
+            <form method="post" action="{% url 'form_builder:entry_pdf_generate' form_entry.id %}">
+                {% csrf_token %}
+                <button type="submit" class="button button--primary">PDF privat erzeugen</button>
+            </form>
+        </div>
+
+        <div class="pdf-preview-frame">
+            {{ pdf_html|safe }}
+        </div>
+    </div>
+</section>
+{% endblock %}

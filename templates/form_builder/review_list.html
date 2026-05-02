@@ -1,0 +1,43 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="panel">
+        <div class="panel__header">
+            <div>
+                <h2>Eintraege in Review</h2>
+                <p class="panel__intro">Diese Formulareintraege wurden zur Pruefung eingereicht und warten auf den naechsten Prozessschritt.</p>
+            </div>
+        </div>
+
+        {% if entries %}
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Formular</th>
+                            <th>Bewohner</th>
+                            <th>Eingereicht</th>
+                            <th>Status</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in entries %}
+                            <tr>
+                                <td>{{ entry.form.title }}</td>
+                                <td>{{ entry.bewohner }}</td>
+                                <td>{{ entry.submitted_at|date:"d.m.Y H:i" }}</td>
+                                <td>{% include "base/partials/status_badge.html" with status=entry.status label=entry.get_status_display %}</td>
+                                <td><a href="{% url 'form_builder:entry_detail' entry.id %}" class="text-link">Anzeigen</a></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {% include "base/partials/empty_state.html" with title="Keine Review-Eintraege" text="Aktuell befinden sich keine Formulareintraege in der Pruefung." %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

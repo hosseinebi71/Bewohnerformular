@@ -1,0 +1,59 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="stat-grid">
+        <article class="stat-card">
+            <span class="stat-card__label">Verfuegbare Formulare</span>
+            <strong class="stat-card__value">{{ available_forms }}</strong>
+        </article>
+        <article class="stat-card">
+            <span class="stat-card__label">Aktive Empfaenger</span>
+            <strong class="stat-card__value">{{ active_recipients }}</strong>
+        </article>
+        <article class="stat-card">
+            <span class="stat-card__label">Aktive Zeitplaene</span>
+            <strong class="stat-card__value">{{ active_schedules }}</strong>
+        </article>
+        <article class="stat-card">
+            <span class="stat-card__label">Offene Versandvorgaenge</span>
+            <strong class="stat-card__value">{{ pending_outbox }}</strong>
+        </article>
+    </div>
+</section>
+
+<section class="content-grid">
+    <article class="panel">
+        <div class="panel__header">
+            <h2>Versand und Benachrichtigungen</h2>
+        </div>
+        <div class="settings-list">
+            <div class="settings-list__item">
+                <strong>Standard-Empfaenger</strong>
+                <p>Empfaenger und Versandkanal pro Formular zentral pflegen.</p>
+            </div>
+            <a href="{% url 'form_builder:schedule_list' %}" class="settings-list__item">
+                <strong>Zeitplaene</strong>
+                <p>Geplante Ausloeser und Versandfenster fachlich vorbereiten.</p>
+            </a>
+            <div class="settings-list__item">
+                <strong>Benachrichtigungen</strong>
+                <p>Ruhe, Uebersicht und Nachvollziehbarkeit fuer operative Prozesse.</p>
+            </div>
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="panel__header">
+            <h2>Systemzugriff</h2>
+        </div>
+        <p class="panel__intro">
+            {% if can_manage_settings %}
+                Sie haben Administrationsrechte und koennen spaeter globale Systemeinstellungen verwalten.
+            {% else %}
+                Sie haben Einsicht in den Einstellungsbereich, aber keine globalen Administrationsrechte.
+            {% endif %}
+        </p>
+    </article>
+</section>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="panel">
+        <div class="panel__header">
+            <div>
+                <h2>Zeitplaene</h2>
+                <p class="panel__intro">Automatisierte Vorbereitung von freigegebenen Formularen fuer den sicheren Ausgangskorb.</p>
+            </div>
+            <div class="panel-actions">
+                {% if can_manage_settings %}
+                    <form method="post" action="{% url 'form_builder:schedule_process' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="button button--ghost">Faellige Zeitplaene pruefen</button>
+                    </form>
+                    <a href="{% url 'form_builder:schedule_create' %}" class="button button--primary">Zeitplan anlegen</a>
+                {% endif %}
+            </div>
+        </div>
+        {% if schedules %}
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead><tr><th>Name</th><th>Formular</th><th>Rhythmus</th><th>Status</th><th>Naechste Ausfuehrung</th><th>Letzte Ausfuehrung</th><th>Aktion</th></tr></thead>
+                    <tbody>
+                        {% for schedule in schedules %}
+                            <tr>
+                                <td>{{ schedule.name }}</td>
+                                <td>{{ schedule.form.title }}</td>
+                                <td>{{ schedule.cron_expression|default:"-" }}</td>
+                                <td>{% include "base/partials/status_badge.html" with status=schedule.status label=schedule.get_status_display %}</td>
+                                <td>{{ schedule.next_run_at|date:"d.m.Y H:i"|default:"-" }}</td>
+                                <td>{{ schedule.last_run_at|date:"d.m.Y H:i"|default:"-" }}</td>
+                                <td><div class="inline-actions">{% if can_manage_settings %}<a href="{% url 'form_builder:schedule_edit' schedule.id %}" class="text-link">Bearbeiten</a><form method="post" action="{% url 'form_builder:schedule_toggle' schedule.id %}">{% csrf_token %}<button type="submit" class="button button--ghost button--small">{% if schedule.is_active and schedule.status == "active" %}Pausieren{% else %}Aktivieren{% endif %}</button></form>{% else %}<span class="hint-text">Nur lesend</span>{% endif %}</div></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {% include "base/partials/empty_state.html" with title="Noch keine Zeitplaene" text="Lege einen Zeitplan an, um freigegebene Formulare automatisch fuer den Versand vorzubereiten." action_url="/einstellungen/zeitplaene/neu/" action_label="Zeitplan anlegen" %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

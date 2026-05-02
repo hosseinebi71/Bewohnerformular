@@ -1,0 +1,43 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="panel">
+        <div class="panel__header">
+            <div>
+                <h2>Eigene Entwuerfe</h2>
+                <p class="panel__intro">Hier sehen Sie alle von Ihnen angelegten oder zur Nachbearbeitung offenen Entwuerfe.</p>
+            </div>
+        </div>
+
+        {% if entries %}
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Formular</th>
+                            <th>Bewohner</th>
+                            <th>Status</th>
+                            <th>Zuletzt bearbeitet</th>
+                            <th>Aktion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in entries %}
+                            <tr>
+                                <td>{{ entry.form.title }}</td>
+                                <td>{{ entry.bewohner }}</td>
+                                <td>{% include "base/partials/status_badge.html" with status=entry.status label=entry.get_status_display %}</td>
+                                <td>{{ entry.updated_at|date:"d.m.Y H:i" }}</td>
+                                <td><a href="{% url 'form_builder:entry_edit' entry.id %}" class="text-link">Bearbeiten</a></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {% include "base/partials/empty_state.html" with title="Keine Entwuerfe vorhanden" text="Sobald Sie einen Entwurf anlegen, erscheint er in dieser Uebersicht." action_url="/formulare/" action_label="Zu den Formularen" %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

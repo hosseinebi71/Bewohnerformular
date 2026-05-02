@@ -1,0 +1,12 @@
+<header class="topbar">
+    <div>
+        <h1 class="topbar__title">{{ page_title|default:"Formularsystem" }}</h1>
+        <p class="topbar__meta">Sichere Formularprozesse fuer Bewohner-bezogene Arbeitsablaeufe.</p>
+    </div>
+    <div class="topbar__actions">
+        <a href="{% url 'form_builder:profile' %}" class="topbar__profile">
+            <span class="topbar__profile-label">Angemeldet als</span>
+            <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+        </a>
+    </div>
+</header>

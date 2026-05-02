@@ -1,0 +1,49 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="panel">
+        <div class="panel__header">
+            <div>
+                <h2>Verfuegbare Formulare</h2>
+                <p class="panel__intro">Formulare werden zentral gepflegt und hier fuer die operative Bearbeitung bereitgestellt.</p>
+            </div>
+        </div>
+
+        {% if forms %}
+            <div class="card-grid">
+                {% for form_definition in forms %}
+                    <article class="resource-card">
+                        <div class="resource-card__body">
+                            <div class="resource-card__header">
+                                <h3>{{ form_definition.title }}</h3>
+                                {% include "base/partials/status_badge.html" with status=form_definition.status label=form_definition.get_status_display %}
+                            </div>
+                            <p>{{ form_definition.description|default:"Dieses Formular steht fuer die strukturierte Erfassung bereit." }}</p>
+                            <dl class="meta-list">
+                                <div>
+                                    <dt>Version</dt>
+                                    <dd>{{ form_definition.version }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Review</dt>
+                                    <dd>{% if form_definition.review_required %}Erforderlich{% else %}Nicht erforderlich{% endif %}</dd>
+                                </div>
+                            </dl>
+                        </div>
+                        <div class="resource-card__footer">
+                            {% if can_create_entries %}
+                                <a href="{% url 'form_builder:entry_create' form_definition.id %}" class="button button--primary">Neuen Entwurf starten</a>
+                            {% else %}
+                                <span class="hint-text">Nur lesender Zugriff</span>
+                            {% endif %}
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            {% include "base/partials/empty_state.html" with title="Keine Formulare verfuegbar" text="Aktuell sind keine veroeffentlichten Formulare vorhanden." %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

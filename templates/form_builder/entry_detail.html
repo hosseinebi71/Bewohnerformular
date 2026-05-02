@@ -1,0 +1,104 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="panel entry-panel">
+        <div class="panel__header">
+            <div>
+                <h2>Formulareintrag</h2>
+                <p class="panel__intro">Pruefansicht mit Status, Bewohnerdaten und gespeicherten Formularwerten.</p>
+            </div>
+            <div class="panel-actions">
+                {% if can_edit_entry %}
+                    <a href="{% url 'form_builder:entry_edit' form_entry.id %}" class="button button--ghost">Bearbeiten</a>
+                {% endif %}
+                <a href="{% url 'form_builder:draft_list' %}" class="text-link">Zur Uebersicht</a>
+            </div>
+        </div>
+
+        <div class="workflow-strip" aria-label="Workflow Status">
+            <span class="workflow-strip__item{% if form_entry.status == 'draft' %} is-active{% endif %}">Entwurf</span>
+            <span class="workflow-strip__item{% if form_entry.status == 'in_review' %} is-active{% endif %}">Review</span>
+            <span class="workflow-strip__item{% if form_entry.status == 'approved' %} is-active{% endif %}">Freigegeben</span>
+            <span class="workflow-strip__item{% if form_entry.status == 'ready_to_send' %} is-active{% endif %}">Ausgangskorb</span>
+            <span class="workflow-strip__item{% if form_entry.status == 'archived' %} is-active{% endif %}">Archiv</span>
+        </div>
+
+        <div class="entry-summary">
+            <div>
+                <span class="entry-summary__label">Formular</span>
+                <strong>{{ form_entry.form.title }}</strong>
+            </div>
+            <div>
+                <span class="entry-summary__label">Bewohner</span>
+                <strong>{{ form_entry.bewohner }}</strong>
+            </div>
+            <div>
+                <span class="entry-summary__label">Status</span>
+                {% include "base/partials/status_badge.html" with status=form_entry.status label=form_entry.get_status_display %}
+            </div>
+            <div>
+                <span class="entry-summary__label">Letzte Aenderung</span>
+                <strong>{{ form_entry.updated_at|date:"d.m.Y H:i" }}</strong>
+            </div>
+        </div>
+
+        <div class="document-actions">
+            <div>
+                <strong>PDF-Vorschau</strong>
+                <p>Vor dem Versand kann die PDF-Ansicht geprueft und privat gespeichert werden.</p>
+            </div>
+            <div class="document-actions__buttons">
+                <a href="{% url 'form_builder:entry_pdf_preview' form_entry.id %}" class="button button--ghost">Vorschau ansehen</a>
+                {% if latest_pdf_document %}
+                    <a href="{% url 'form_builder:pdf_download' latest_pdf_document.id %}" class="button button--primary" target="_blank" rel="noopener">Gespeichertes PDF oeffnen</a>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if can_review_entry or can_queue_entry %}
+            <div class="review-actions">
+                {% if can_review_entry %}
+                    <form method="post" action="{% url 'form_builder:entry_approve' form_entry.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="button button--primary">Freigeben</button>
+                    </form>
+                    <form method="post" action="{% url 'form_builder:entry_reject' form_entry.id %}" class="reject-form">
+                        {% csrf_token %}
+                        <input type="text" name="reason" placeholder="Rueckweisungsgrund optional">
+                        <button type="submit" class="button button--ghost">Zurueckweisen</button>
+                    </form>
+                {% endif %}
+                {% if can_queue_entry %}
+                    {% if latest_pdf_document %}
+                        <form method="post" action="{% url 'form_builder:entry_queue' form_entry.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="button button--primary">In Ausgangskorb stellen</button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'form_builder:entry_pdf_preview' form_entry.id %}" class="button button--primary">Erst PDF erzeugen</a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <div class="section-heading">
+            <h3>Gespeicherte Inhalte</h3>
+            <p>Die Werte stammen aus dem eingefrorenen Formular-Snapshot dieses Eintrags.</p>
+        </div>
+
+        {% if detail_rows %}
+            <div class="detail-grid">
+                {% for row in detail_rows %}
+                    <div class="detail-row detail-row--{{ row.sensitivity }}">
+                        <dt>{{ row.label }}</dt>
+                        <dd>{{ row.value }}</dd>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            {% include "base/partials/empty_state.html" with title="Keine Snapshot-Daten" text="Fuer diesen Eintrag wurden noch keine Formularwerte gespeichert." %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

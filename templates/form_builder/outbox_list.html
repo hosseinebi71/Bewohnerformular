@@ -1,0 +1,59 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="panel">
+        <div class="panel__header">
+            <div>
+                <h2>Ausgangskorb</h2>
+                <p class="panel__intro">Offene Versandvorgaenge mit ausstehenden Zustellversuchen.</p>
+            </div>
+            {% if items and can_process_outbox %}
+                <form method="post" action="{% url 'form_builder:outbox_process' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="button button--primary">Faellige Sendungen verarbeiten</button>
+                </form>
+            {% endif %}
+        </div>
+
+        {% if items %}
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Empfaenger</th>
+                            <th>Formular</th>
+                            <th>Kanal</th>
+                            <th>Status</th>
+                            <th>Versuche</th>
+                            <th>PDF</th>
+                            <th>Naechster Versuch</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                            <tr>
+                                <td>{{ item.recipient.email }}</td>
+                                <td>{{ item.form.title }}</td>
+                                <td>{{ item.get_channel_display }}</td>
+                                <td>{% include "base/partials/status_badge.html" with status=item.status label=item.get_status_display %}</td>
+                                <td>{{ item.attempt_count }} / {{ item.max_attempts }}</td>
+                                <td>
+                                    {% if item.pdf_document_id %}
+                                        <a href="{% url 'form_builder:pdf_download' item.pdf_document.id %}" class="text-link" target="_blank">PDF</a>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.next_attempt_at|date:"d.m.Y H:i"|default:"Sofort" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {% include "base/partials/empty_state.html" with title="Kein offener Versand" text="Im Ausgangskorb liegen aktuell keine offenen Versandvorgaenge." %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

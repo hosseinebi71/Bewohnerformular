@@ -1,0 +1,25 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="panel">
+        <div class="panel__header">
+            <div>
+                <h2>{% if mode == "edit" %}Zeitplan bearbeiten{% else %}Zeitplan anlegen{% endif %}</h2>
+                <p class="panel__intro">Zeitplaene erzeugen keine neuen Bewohnerdaten. Sie stellen nur bereits freigegebene Eintraege mit erzeugtem PDF in den Ausgangskorb.</p>
+            </div>
+            <a href="{% url 'form_builder:schedule_list' %}" class="text-link">Zurueck</a>
+        </div>
+        <form method="post" class="card-form">
+            {% csrf_token %}
+            {% if schedule_form.non_field_errors %}<div class="flash-message flash-message--error">{{ schedule_form.non_field_errors }}</div>{% endif %}
+            <div class="form-grid">
+                {% for field in schedule_form %}
+                    {% include "base/partials/form_field.html" with field=field %}
+                {% endfor %}
+            </div>
+            <div class="form-actions form-actions--split"><a href="{% url 'form_builder:schedule_list' %}" class="button button--ghost">Abbrechen</a><button type="submit" class="button button--primary">Speichern</button></div>
+        </form>
+    </div>
+</section>
+{% endblock %}

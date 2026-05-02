@@ -1,0 +1,22 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ page_title|default:"Formularsystem" }}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'form_builder/css/app.css' %}">
+</head>
+<body class="app-shell">
+    <div class="app-shell__sidebar">
+        {% include "base/partials/sidebar.html" %}
+    </div>
+    <div class="app-shell__main">
+        {% include "base/partials/topbar.html" %}
+        <main class="app-content">
+            {% include "base/partials/flash_messages.html" %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

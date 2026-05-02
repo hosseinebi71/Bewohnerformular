@@ -1,0 +1,58 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="content-grid">
+    <article class="panel">
+        <div class="panel__header">
+            <h2>Benutzerprofil</h2>
+        </div>
+        <dl class="profile-list">
+            <div>
+                <dt>Name</dt>
+                <dd>{{ request.user.get_full_name|default:"Nicht gepflegt" }}</dd>
+            </div>
+            <div>
+                <dt>E-Mail</dt>
+                <dd>{{ request.user.email|default:"Nicht gepflegt" }}</dd>
+            </div>
+            <div>
+                <dt>Benutzername</dt>
+                <dd>{{ request.user.username }}</dd>
+            </div>
+            <div>
+                <dt>Rollen</dt>
+                <dd>
+                    {% for group in request.user.groups.all %}
+                        {{ group.name }}{% if not forloop.last %}, {% endif %}
+                    {% empty %}
+                        Keine Gruppen zugewiesen
+                    {% endfor %}
+                </dd>
+            </div>
+        </dl>
+    </article>
+
+    <article class="panel">
+        <div class="panel__header">
+            <h2>Letzte Aktivitaeten</h2>
+        </div>
+        {% if audit_logs %}
+            <div class="activity-list">
+                {% for log in audit_logs %}
+                    <div class="activity-list__item activity-list__item--static">
+                        <div>
+                            <strong>{{ log.get_event_type_display }}</strong>
+                            <p>{{ log.message|default:log.target_model }}</p>
+                        </div>
+                        <div class="activity-list__meta">
+                            <span>{{ log.occurred_at|date:"d.m.Y H:i" }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            {% include "base/partials/empty_state.html" with title="Noch keine Aktivitaeten" text="Sobald protokollierte Aktionen vorhanden sind, erscheinen sie hier." %}
+        {% endif %}
+    </article>
+</section>
+{% endblock %}

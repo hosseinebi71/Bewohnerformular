@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <title>{{ form_entry.form.title }} - {{ form_entry.bewohner }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 18mm 16mm 18mm 16mm;
+        }
+        :root {
+            --text: #162232;
+            --muted: #667085;
+            --border: #d9e2ec;
+            --surface: #f7f9fc;
+            --primary: #1f4f82;
+        }
+        body {
+            margin: 0;
+            font-family: "DejaVu Sans", Arial, sans-serif;
+            color: var(--text);
+            font-size: 11pt;
+            line-height: 1.45;
+        }
+        .pdf-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 14px;
+            margin-bottom: 22px;
+        }
+        .brand {
+            font-size: 10pt;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
+        h1 {
+            margin: 6px 0 0;
+            font-size: 20pt;
+            line-height: 1.2;
+        }
+        .meta-box {
+            min-width: 190px;
+            padding: 10px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 9pt;
+        }
+        .meta-box div + div {
+            margin-top: 5px;
+        }
+        .section-title {
+            margin: 24px 0 10px;
+            font-size: 12pt;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .summary-item, .field-row {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            background: #fff;
+        }
+        .label {
+            display: block;
+            color: var(--muted);
+            font-size: 8.5pt;
+            margin-bottom: 3px;
+        }
+        .value {
+            font-weight: 700;
+        }
+        .field-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .field-table th, .field-table td {
+            border-bottom: 1px solid var(--border);
+            padding: 9px 8px;
+            vertical-align: top;
+            text-align: left;
+        }
+        .field-table th {
+            width: 34%;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .field-table tr:last-child th,
+        .field-table tr:last-child td {
+            border-bottom: none;
+        }
+        .signature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            margin-top: 34px;
+        }
+        .signature-line {
+            border-top: 1px solid #4b5563;
+            padding-top: 7px;
+            color: var(--muted);
+            font-size: 9pt;
+        }
+        .footer {
+            position: fixed;
+            bottom: -8mm;
+            left: 0;
+            right: 0;
+            color: var(--muted);
+            font-size: 8pt;
+            border-top: 1px solid var(--border);
+            padding-top: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <header class="pdf-header">
+        <div>
+            <div class="brand">{{ company_name }}</div>
+            <h1>{{ form_entry.form.title }}</h1>
+        </div>
+        <div class="meta-box">
+            <div><strong>Status:</strong> {{ form_entry.get_status_display }}</div>
+            <div><strong>Version:</strong> {{ form_entry.form.version }}</div>
+            <div><strong>Erstellt:</strong> {{ generated_at|date:"d.m.Y H:i" }}</div>
+            {% if generated_by %}<div><strong>Von:</strong> {{ generated_by.get_full_name|default:generated_by.username }}</div>{% endif %}
+        </div>
+    </header>
+
+    <h2 class="section-title">Bewohner</h2>
+    <section class="summary-grid">
+        <div class="summary-item">
+            <span class="label">Name</span>
+            <span class="value">{{ form_entry.bewohner.last_name }}, {{ form_entry.bewohner.first_name }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="label">Bewohnernummer</span>
+            <span class="value">{{ form_entry.bewohner.resident_number }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="label">Geburtsdatum</span>
+            <span class="value">{{ form_entry.bewohner.date_of_birth|date:"d.m.Y"|default:"-" }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="label">Zimmer</span>
+            <span class="value">{{ form_entry.bewohner.room_label|default:"-" }}</span>
+        </div>
+    </section>
+
+    <h2 class="section-title">Formularinhalt</h2>
+    <table class="field-table">
+        <tbody>
+            {% for row in detail_rows %}
+                <tr>
+                    <th>{{ row.label }}</th>
+                    <td>{{ row.value }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="2">Keine Formularwerte vorhanden.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <section class="signature-grid">
+        <div class="signature-line">Datum / Unterschrift Mitarbeiter</div>
+        <div class="signature-line">Datum / Freigabe</div>
+    </section>
+
+    <footer class="footer">
+        <span>Privates Systemdokument - nicht oeffentlich verlinken</span>
+        <span>{{ form_entry.public_id }}</span>
+    </footer>
+</body>
+</html>

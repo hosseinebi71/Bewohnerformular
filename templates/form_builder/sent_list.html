@@ -1,0 +1,41 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="panel">
+        <div class="panel__header">
+            <div>
+                <h2>Versandte Formulare</h2>
+                <p class="panel__intro">Abgeschlossene Versandvorgaenge mit erfolgreicher Uebermittlung.</p>
+            </div>
+        </div>
+
+        {% if items %}
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Empfaenger</th>
+                            <th>Formular</th>
+                            <th>Kanal</th>
+                            <th>Versandt am</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                            <tr>
+                                <td>{{ item.recipient.email }}</td>
+                                <td>{{ item.form.title }}</td>
+                                <td>{{ item.get_channel_display }}</td>
+                                <td>{{ item.sent_at|date:"d.m.Y H:i"|default:"-" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {% include "base/partials/empty_state.html" with title="Noch nichts versandt" text="Sobald Versandvorgaenge erfolgreich abgeschlossen wurden, erscheinen sie hier." %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

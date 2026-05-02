@@ -1,0 +1,43 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="panel">
+        <div class="panel__header">
+            <div>
+                <h2>Archiv</h2>
+                <p class="panel__intro">Revisionsrelevante Versand- und Dokumenthistorie mit geschuetztem Zugriff.</p>
+            </div>
+        </div>
+
+        {% if items %}
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Formular</th>
+                            <th>Bewohner</th>
+                            <th>Versandt</th>
+                            <th>Archiviert</th>
+                            <th>Aufbewahrung bis</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                            <tr>
+                                <td>{{ item.form.title }}</td>
+                                <td>{{ item.bewohner }}</td>
+                                <td>{{ item.sent_at|date:"d.m.Y H:i" }}</td>
+                                <td>{{ item.archived_at|date:"d.m.Y H:i" }}</td>
+                                <td>{{ item.retention_until|date:"d.m.Y"|default:"-" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {% include "base/partials/empty_state.html" with title="Archiv ist leer" text="Archivierte Versandvorgaenge werden hier angezeigt, sobald sie vorliegen." %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

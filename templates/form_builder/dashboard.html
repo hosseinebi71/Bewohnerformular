@@ -1,0 +1,77 @@
+{% extends "base/app_base.html" %}
+
+{% block content %}
+<section class="page-section">
+    <div class="stat-grid">
+        <article class="stat-card">
+            <span class="stat-card__label">Verfuegbare Formulare</span>
+            <strong class="stat-card__value">{{ dashboard_counts.available_forms }}</strong>
+        </article>
+        <article class="stat-card">
+            <span class="stat-card__label">Eigene Entwuerfe</span>
+            <strong class="stat-card__value">{{ dashboard_counts.drafts }}</strong>
+        </article>
+        <article class="stat-card">
+            <span class="stat-card__label">In Review</span>
+            <strong class="stat-card__value">{{ dashboard_counts.in_review }}</strong>
+        </article>
+        <article class="stat-card">
+            <span class="stat-card__label">Ausgangskorb offen</span>
+            <strong class="stat-card__value">{{ dashboard_counts.outbox_pending }}</strong>
+        </article>
+        <article class="stat-card">
+            <span class="stat-card__label">Versandt</span>
+            <strong class="stat-card__value">{{ dashboard_counts.sent }}</strong>
+        </article>
+        <article class="stat-card">
+            <span class="stat-card__label">Archiv</span>
+            <strong class="stat-card__value">{{ dashboard_counts.archive }}</strong>
+        </article>
+    </div>
+</section>
+
+<section class="content-grid">
+    <article class="panel">
+        <div class="panel__header">
+            <h2>Schnellzugriff</h2>
+            <a href="{% url 'form_builder:form_list' %}" class="text-link">Alle Formulare</a>
+        </div>
+        {% if frequent_forms %}
+            <div class="quick-list">
+                {% for form_definition in frequent_forms %}
+                    <a href="{% url 'form_builder:entry_create' form_definition.id %}" class="quick-list__item">
+                        <strong>{{ form_definition.title }}</strong>
+                        <span>Version {{ form_definition.version }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            {% include "base/partials/empty_state.html" with title="Keine Formulare verfuegbar" text="Sobald veroeffentlichte Formulare vorhanden sind, erscheinen sie hier." %}
+        {% endif %}
+    </article>
+
+    <article class="panel">
+        <div class="panel__header">
+            <h2>Letzte Formulareintraege</h2>
+        </div>
+        {% if recent_activity.entries %}
+            <div class="activity-list">
+                {% for entry in recent_activity.entries %}
+                    <a href="{% url 'form_builder:entry_detail' entry.id %}" class="activity-list__item">
+                        <div>
+                            <strong>{{ entry.form.title }}</strong>
+                            <p>{{ entry.bewohner }}</p>
+                        </div>
+                        <div class="activity-list__meta">
+                            {% include "base/partials/status_badge.html" with status=entry.status label=entry.get_status_display %}
+                            <span>{{ entry.updated_at|date:"d.m.Y H:i" }}</span>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            {% include "base/partials/empty_state.html" with title="Keine Aktivitaet" text="Es wurden noch keine Formulareintraege bearbeitet." %}
+        {% endif %}
+    </article>
+</section>
+{% endblock %}

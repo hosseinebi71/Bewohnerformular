@@ -1,0 +1,22 @@
+<aside class="sidebar">
+    <div class="sidebar__brand">
+        <a href="{% url 'form_builder:dashboard' %}" class="sidebar__brand-link">Formularsystem</a>
+        <p class="sidebar__subtitle">Bewohner-Formulare</p>
+    </div>
+
+    <nav class="sidebar__nav" aria-label="Hauptnavigation">
+        {% for item in navigation_items %}
+            <a href="{% url item.url_name %}" class="sidebar__link{% if item.active %} is-active{% endif %}">
+                {{ item.label }}
+            </a>
+        {% endfor %}
+    </nav>
+
+    <div class="sidebar__footer">
+        <p class="sidebar__user">{{ request.user.get_full_name|default:request.user.username }}</p>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="button button--ghost button--full">Abmelden</button>
+        </form>
+    </div>
+</aside>
