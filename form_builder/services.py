@@ -18,7 +18,7 @@ from .models import (
     OutboxItem,
     PDFDocument,
 )
-from .pdf_services import generate_entry_pdf_document, get_latest_generated_pdf_document
+from .pdf_services import generate_entry_pdf_document
 
 FIELD_WIDGETS = {
     Field.FieldType.TEXTAREA: forms.Textarea(attrs={"rows": 4}),

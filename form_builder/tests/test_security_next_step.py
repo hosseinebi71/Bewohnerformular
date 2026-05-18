@@ -400,9 +400,12 @@ class OutboxAndRetentionTests(SecurityFixtureMixin, TestCase):
             path.write_bytes(b"%PDF-1.4 test")
             return pdf
 
-        with override_settings(PRIVATE_DOCUMENT_ROOT=root), patch(
-            "form_builder.services.generate_entry_pdf_document",
-            side_effect=fake_generate_final_pdf,
+        with (
+            override_settings(PRIVATE_DOCUMENT_ROOT=root),
+            patch(
+                "form_builder.services.generate_entry_pdf_document",
+                side_effect=fake_generate_final_pdf,
+            ),
         ):
             items = queue_entry_for_delivery(form_entry=self.entry, user=self.staff)
 
