@@ -698,7 +698,7 @@ def _render_complaint_pdf(
     cat_rows = []
     for i in range(0, len(cats), 3):
         row = []
-        for key, label, checked in cats[i : i + 3]:
+        for _key, label, checked in cats[i : i + 3]:
             row.append(_p(("[x] " if checked else "[ ] ") + label, styles["value"]))
         while len(row) < 3:
             row.append(_p("", styles["value"]))
@@ -833,7 +833,6 @@ def _render_bv_pdf(
     from reportlab.pdfgen import canvas
 
     colors = rl["colors"]
-    mm = rl["mm"]
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=rl["A4"])
     page_w, page_h = rl["A4"]
@@ -952,7 +951,7 @@ def _render_bv_pdf(
     labels = ["1. Datum:", "2. Einrichtung:", "3. LfdNr.:", "4. Meldender (Name/Position):"]
     keys = ["datum", "einrichtung", "lfd_nr", "meldender"]
     x = left
-    for w, lab, key in zip(widths, labels, keys):
+    for w, lab, key in zip(widths, labels, keys, strict=True):
         label(lab, x, y + field_h + 5.2, size=5.7)
         draw_box(x, y, w, field_h, val(key), font_size=7.0)
         x += w

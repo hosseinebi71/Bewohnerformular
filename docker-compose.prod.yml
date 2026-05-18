@@ -1,0 +1,32 @@
+services:
+  web:
+    image: ghcr.io/hosseinebi71/bewohnerformular:latest
+    container_name: bewohnerformular_web
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - db
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - static_volume:/app/staticfiles
+      - private_documents:/app/private_documents
+
+  db:
+    image: postgres:16
+    container_name: bewohnerformular_db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bewohnerformular}
+      POSTGRES_USER: ${POSTGRES_USER:-bewohnerformular}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+  static_volume:
+  private_documents:

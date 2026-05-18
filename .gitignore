@@ -37,3 +37,15 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+# Local patch/extract folders
+live_preview_hotfix/
+preview_connection_hotfix/
+reportlab_pdf_hotfix/
+bewohnerformular_docker_patch/
+bewohnerformular_test_fix_patch/
+bewohnerformular_precommit_fix_patch/
+*.zip
+# Local patch/extract artifacts
+apply_bewohnerformular_*.py
+bewohnerformular_*_patch.zip
+bewohnerformular_*_patch/

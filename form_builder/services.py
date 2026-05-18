@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from . import pdf_services
 from .models import (
     AuditLog,
     Bewohner,
@@ -18,7 +19,9 @@ from .models import (
     OutboxItem,
     PDFDocument,
 )
-from .pdf_services import generate_entry_pdf_document
+
+generate_entry_pdf_document = pdf_services.generate_entry_pdf_document
+get_latest_generated_pdf_document = pdf_services.get_latest_generated_pdf_document
 
 FIELD_WIDGETS = {
     Field.FieldType.TEXTAREA: forms.Textarea(attrs={"rows": 4}),

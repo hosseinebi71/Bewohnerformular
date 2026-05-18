@@ -1,0 +1,11 @@
+[flake8]
+max-line-length = 100
+extend-ignore = E203,W503,E501,E402,W291
+exclude =
+    .git,
+    .venv,
+    __pycache__,
+    */migrations/*,
+    live_preview_hotfix/*,
+    preview_connection_hotfix/*,
+    reportlab_pdf_hotfix/*

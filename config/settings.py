@@ -50,6 +50,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -161,3 +162,18 @@ X_FRAME_OPTIONS = "DENY"
 # EMAIL_USE_TLS = True
 # EMAIL_HOST_USER = "formularsystem@example.com"
 # EMAIL_HOST_PASSWORD = "change-me"
+
+# Static files storage: manifest in production, plain storage in development/tests.
+# Manifest storage requires collectstatic and is therefore only safe for production.
+if DEBUG:
+    STORAGES = {
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+else:
+    STORAGES = {
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
