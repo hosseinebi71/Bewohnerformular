@@ -80,11 +80,17 @@ class Command(BaseCommand):
         parser.add_argument("--skip-demo-user", action="store_true")
         parser.add_argument("--reset-demo-password", action="store_true")
         parser.add_argument("--no-force-due-schedule", action="store_true")
-        parser.add_argument("--fresh-entry", action="store_true", help="Create a new approved demo entry even if one exists.")
+        parser.add_argument(
+            "--fresh-entry",
+            action="store_true",
+            help="Create a new approved demo entry even if one exists.",
+        )
 
     def handle(self, *args, **options):
         if not settings.DEBUG and not options["allow_production"]:
-            raise CommandError("seed_demo_data is blocked when DEBUG=False. Use --allow-production only in a controlled test environment.")
+            raise CommandError(
+                "seed_demo_data is blocked when DEBUG=False. Use --allow-production only in a controlled test environment."
+            )
 
         with transaction.atomic():
             self._ensure_groups()
@@ -92,7 +98,9 @@ class Command(BaseCommand):
             bewohner = self._ensure_bewohner(user)
             form = self._ensure_form_with_fields(user)
             recipient = self._ensure_recipient(form, user)
-            schedule = self._ensure_schedule(form, user, force_due=not options["no_force_due_schedule"])
+            schedule = self._ensure_schedule(
+                form, user, force_due=not options["no_force_due_schedule"]
+            )
             entry = self._ensure_approved_entry(form, bewohner, user, fresh=options["fresh_entry"])
             pdf_document = self._ensure_demo_pdf(entry, user)
 
@@ -127,7 +135,13 @@ class Command(BaseCommand):
         User = get_user_model()
         user, created = User.objects.get_or_create(
             username=DEMO_USERNAME,
-            defaults={"email": "demo.admin@example.com", "first_name": "Demo", "last_name": "Admin", "is_staff": True, "is_superuser": True},
+            defaults={
+                "email": "demo.admin@example.com",
+                "first_name": "Demo",
+                "last_name": "Admin",
+                "is_staff": True,
+                "is_superuser": True,
+            },
         )
         if created or options["reset_demo_password"]:
             user.set_password(DEMO_PASSWORD)
@@ -144,7 +158,15 @@ class Command(BaseCommand):
     def _ensure_bewohner(self, user):
         bewohner, _ = Bewohner.objects.update_or_create(
             resident_number=DEMO_RESIDENT_NUMBER,
-            defaults={"first_name": "Max", "last_name": "Mustermann", "date_of_birth": "1942-03-14", "room_label": "A-101", "status": Bewohner.RecordStatus.ACTIVE, "notes": "Lokaler Demo-Datensatz fuer Workflow-Tests.", "updated_by": user},
+            defaults={
+                "first_name": "Max",
+                "last_name": "Mustermann",
+                "date_of_birth": "1942-03-14",
+                "room_label": "A-101",
+                "status": Bewohner.RecordStatus.ACTIVE,
+                "notes": "Lokaler Demo-Datensatz fuer Workflow-Tests.",
+                "updated_by": user,
+            },
         )
         if user and not bewohner.created_by_id:
             bewohner.created_by = user
@@ -155,10 +177,21 @@ class Command(BaseCommand):
         form, _ = Form.objects.get_or_create(
             key=DEMO_FORM_KEY,
             version=1,
-            defaults={"title": "Demo Wochenbericht Bewohner", "description": "Professioneller Demo-Workflow fuer Draft, Review, PDF, Outbox und Archiv.", "status": Form.PublicationStatus.DRAFT, "review_required": True, "is_archivable": True, "retention_period_days": 3650, "created_by": user, "updated_by": user},
+            defaults={
+                "title": "Demo Wochenbericht Bewohner",
+                "description": "Professioneller Demo-Workflow fuer Draft, Review, PDF, Outbox und Archiv.",
+                "status": Form.PublicationStatus.DRAFT,
+                "review_required": True,
+                "is_archivable": True,
+                "retention_period_days": 3650,
+                "created_by": user,
+                "updated_by": user,
+            },
         )
         form.title = "Demo Wochenbericht Bewohner"
-        form.description = "Professioneller Demo-Workflow fuer Draft, Review, PDF, Outbox und Archiv."
+        form.description = (
+            "Professioneller Demo-Workflow fuer Draft, Review, PDF, Outbox und Archiv."
+        )
         form.review_required = True
         form.is_archivable = True
         form.retention_period_days = 3650
@@ -166,17 +199,72 @@ class Command(BaseCommand):
         form.save()
 
         field_specs = [
-            {"position": 1, "key": "datum", "label": "Datum", "field_type": Field.FieldType.DATE, "required": True},
-            {"position": 2, "key": "pkz", "label": "PKZ", "field_type": Field.FieldType.TEXT, "required": True, "placeholder": "z. B. PKZ-12345", "sensitivity": Field.SensitivityLevel.SENSITIVE},
-            {"position": 3, "key": "grund", "label": "Grund / Anlass", "field_type": Field.FieldType.SELECT, "required": True, "choices": [{"value": "routine", "label": "Routine"}, {"value": "aenderung", "label": "Aenderung"}, {"value": "notiz", "label": "Notiz"}]},
-            {"position": 4, "key": "bericht", "label": "Bericht", "field_type": Field.FieldType.TEXTAREA, "required": True, "help_text": "Kurze fachliche Zusammenfassung fuer den Empfaenger.", "sensitivity": Field.SensitivityLevel.SENSITIVE},
-            {"position": 5, "key": "rueckmeldung_erforderlich", "label": "Rueckmeldung erforderlich", "field_type": Field.FieldType.BOOLEAN, "required": False, "default_value": False},
+            {
+                "position": 1,
+                "key": "datum",
+                "label": "Datum",
+                "field_type": Field.FieldType.DATE,
+                "required": True,
+            },
+            {
+                "position": 2,
+                "key": "pkz",
+                "label": "PKZ",
+                "field_type": Field.FieldType.TEXT,
+                "required": True,
+                "placeholder": "z. B. PKZ-12345",
+                "sensitivity": Field.SensitivityLevel.SENSITIVE,
+            },
+            {
+                "position": 3,
+                "key": "grund",
+                "label": "Grund / Anlass",
+                "field_type": Field.FieldType.SELECT,
+                "required": True,
+                "choices": [
+                    {"value": "routine", "label": "Routine"},
+                    {"value": "aenderung", "label": "Aenderung"},
+                    {"value": "notiz", "label": "Notiz"},
+                ],
+            },
+            {
+                "position": 4,
+                "key": "bericht",
+                "label": "Bericht",
+                "field_type": Field.FieldType.TEXTAREA,
+                "required": True,
+                "help_text": "Kurze fachliche Zusammenfassung fuer den Empfaenger.",
+                "sensitivity": Field.SensitivityLevel.SENSITIVE,
+            },
+            {
+                "position": 5,
+                "key": "rueckmeldung_erforderlich",
+                "label": "Rueckmeldung erforderlich",
+                "field_type": Field.FieldType.BOOLEAN,
+                "required": False,
+                "default_value": False,
+            },
         ]
         for spec in field_specs:
             Field.objects.update_or_create(
                 form=form,
                 key=spec["key"],
-                defaults={"position": spec["position"], "label": spec["label"], "field_type": spec["field_type"], "required": spec.get("required", False), "sensitivity": spec.get("sensitivity", Field.SensitivityLevel.NORMAL), "placeholder": spec.get("placeholder", ""), "help_text": spec.get("help_text", ""), "default_value": spec.get("default_value"), "choices": spec.get("choices", []), "validation_rules": spec.get("validation_rules", {}), "ui_config": spec.get("ui_config", {}), "is_active": True, "updated_by": user, "created_by": user},
+                defaults={
+                    "position": spec["position"],
+                    "label": spec["label"],
+                    "field_type": spec["field_type"],
+                    "required": spec.get("required", False),
+                    "sensitivity": spec.get("sensitivity", Field.SensitivityLevel.NORMAL),
+                    "placeholder": spec.get("placeholder", ""),
+                    "help_text": spec.get("help_text", ""),
+                    "default_value": spec.get("default_value"),
+                    "choices": spec.get("choices", []),
+                    "validation_rules": spec.get("validation_rules", {}),
+                    "ui_config": spec.get("ui_config", {}),
+                    "is_active": True,
+                    "updated_by": user,
+                    "created_by": user,
+                },
             )
 
         if form.status != Form.PublicationStatus.PUBLISHED:
@@ -185,7 +273,9 @@ class Command(BaseCommand):
         return form
 
     def _ensure_recipient(self, form, user):
-        existing_default = FormRecipient.objects.filter(form=form, is_default=True, is_active=True).first()
+        existing_default = FormRecipient.objects.filter(
+            form=form, is_default=True, is_active=True
+        ).first()
         if existing_default:
             return existing_default
         recipient, _ = FormRecipient.objects.update_or_create(
@@ -193,7 +283,14 @@ class Command(BaseCommand):
             email=DEMO_EMAIL,
             recipient_type=FormRecipient.RecipientType.TO,
             channel=FormRecipient.ChannelType.SMTP,
-            defaults={"name": "Demo Empfaenger", "is_default": True, "is_active": True, "config": {"source": "seed_demo_data"}, "created_by": user, "updated_by": user},
+            defaults={
+                "name": "Demo Empfaenger",
+                "is_default": True,
+                "is_active": True,
+                "config": {"source": "seed_demo_data"},
+                "created_by": user,
+                "updated_by": user,
+            },
         )
         return recipient
 
@@ -202,28 +299,97 @@ class Command(BaseCommand):
         schedule, _ = FormSchedule.objects.update_or_create(
             form=form,
             name=DEMO_SCHEDULE_NAME,
-            defaults={"trigger_type": FormSchedule.TriggerType.SCHEDULED, "status": FormSchedule.ScheduleStatus.ACTIVE, "timezone": "Europe/Berlin", "cron_expression": "daily 08:00", "start_at": None, "end_at": None, "next_run_at": now - timedelta(minutes=1) if force_due else now + timedelta(days=1), "last_run_at": None, "is_active": True, "config": {"frequency": "daily", "weekday": 0, "run_time": "08:00", "source": "seed_demo_data"}, "created_by": user, "updated_by": user},
+            defaults={
+                "trigger_type": FormSchedule.TriggerType.SCHEDULED,
+                "status": FormSchedule.ScheduleStatus.ACTIVE,
+                "timezone": "Europe/Berlin",
+                "cron_expression": "daily 08:00",
+                "start_at": None,
+                "end_at": None,
+                "next_run_at": now - timedelta(minutes=1) if force_due else now + timedelta(days=1),
+                "last_run_at": None,
+                "is_active": True,
+                "config": {
+                    "frequency": "daily",
+                    "weekday": 0,
+                    "run_time": "08:00",
+                    "source": "seed_demo_data",
+                },
+                "created_by": user,
+                "updated_by": user,
+            },
         )
         return schedule
 
     def _ensure_approved_entry(self, form, bewohner, user, *, fresh: bool):
-        entry = None if fresh else FormEntry.objects.filter(form=form, bewohner=bewohner).exclude(status=FormEntry.EntryStatus.DELETED).order_by("-created_at").first()
-        payload = {"datum": timezone.localdate().isoformat(), "pkz": "PKZ-DEMO-001", "grund": "routine", "bericht": "Demo-Eintrag fuer den professionellen Testlauf. Dieser Eintrag ist freigegeben und kann geplant versendet werden.", "rueckmeldung_erforderlich": True}
+        entry = (
+            None
+            if fresh
+            else FormEntry.objects.filter(form=form, bewohner=bewohner)
+            .exclude(status=FormEntry.EntryStatus.DELETED)
+            .order_by("-created_at")
+            .first()
+        )
+        payload = {
+            "datum": timezone.localdate().isoformat(),
+            "pkz": "PKZ-DEMO-001",
+            "grund": "routine",
+            "bericht": "Demo-Eintrag fuer den professionellen Testlauf. Dieser Eintrag ist freigegeben und kann geplant versendet werden.",
+            "rueckmeldung_erforderlich": True,
+        }
         if entry is None:
-            entry = FormEntry.objects.create(form=form, bewohner=bewohner, status=FormEntry.EntryStatus.APPROVED, form_snapshot=form.schema or form.build_schema(), data=payload, validation_errors={}, submitted_at=timezone.now(), created_by=user, updated_by=user)
+            entry = FormEntry.objects.create(
+                form=form,
+                bewohner=bewohner,
+                status=FormEntry.EntryStatus.APPROVED,
+                form_snapshot=form.schema or form.build_schema(),
+                data=payload,
+                validation_errors={},
+                submitted_at=timezone.now(),
+                created_by=user,
+                updated_by=user,
+            )
         else:
             entry.form_snapshot = form.schema or form.build_schema()
             entry.data = payload
-            if entry.status not in (FormEntry.EntryStatus.READY_TO_SEND, FormEntry.EntryStatus.ARCHIVED):
+            if entry.status not in (
+                FormEntry.EntryStatus.READY_TO_SEND,
+                FormEntry.EntryStatus.ARCHIVED,
+            ):
                 entry.status = FormEntry.EntryStatus.APPROVED
             entry.submitted_at = entry.submitted_at or timezone.now()
             entry.updated_by = user
-            entry.save(update_fields=["form_snapshot", "data", "status", "submitted_at", "updated_by", "updated_at"])
-        AuditLog.objects.create(actor=user, event_type=AuditLog.EventType.STATUS_CHANGED, target_model="FormEntry", target_id=entry.pk, bewohner=bewohner, form=form, form_entry=entry, message="Demo-Eintrag wurde fuer den Testlauf freigegeben.", metadata={"source": "seed_demo_data"})
+            entry.save(
+                update_fields=[
+                    "form_snapshot",
+                    "data",
+                    "status",
+                    "submitted_at",
+                    "updated_by",
+                    "updated_at",
+                ]
+            )
+        AuditLog.objects.create(
+            actor=user,
+            event_type=AuditLog.EventType.STATUS_CHANGED,
+            target_model="FormEntry",
+            target_id=entry.pk,
+            bewohner=bewohner,
+            form=form,
+            form_entry=entry,
+            message="Demo-Eintrag wurde fuer den Testlauf freigegeben.",
+            metadata={"source": "seed_demo_data"},
+        )
         return entry
 
     def _ensure_demo_pdf(self, entry, user):
-        existing = PDFDocument.objects.filter(form_entry=entry, status=PDFDocument.GenerationStatus.GENERATED).order_by("-created_at").first()
+        existing = (
+            PDFDocument.objects.filter(
+                form_entry=entry, status=PDFDocument.GenerationStatus.GENERATED
+            )
+            .order_by("-created_at")
+            .first()
+        )
         if existing:
             path = get_private_document_root() / existing.storage_key
             if path.exists():
@@ -237,7 +403,35 @@ class Command(BaseCommand):
         pdf_document, _ = PDFDocument.objects.update_or_create(
             form_entry=entry,
             storage_key=storage_key,
-            defaults={"form": entry.form, "bewohner": entry.bewohner, "document_kind": PDFDocument.DocumentKind.REVIEW, "status": PDFDocument.GenerationStatus.GENERATED, "original_filename": f"demo_{entry.form.key}_{entry.public_id}.pdf", "content_type": "application/pdf", "file_size": len(DEMO_PDF_BYTES), "sha256": sha256, "page_count": 1, "generated_at": now, "access_policy": {"private": True, "source": "seed_demo_data", "download_requires_permission": True}, "created_by": user, "updated_by": user},
+            defaults={
+                "form": entry.form,
+                "bewohner": entry.bewohner,
+                "document_kind": PDFDocument.DocumentKind.REVIEW,
+                "status": PDFDocument.GenerationStatus.GENERATED,
+                "original_filename": f"demo_{entry.form.key}_{entry.public_id}.pdf",
+                "content_type": "application/pdf",
+                "file_size": len(DEMO_PDF_BYTES),
+                "sha256": sha256,
+                "page_count": 1,
+                "generated_at": now,
+                "access_policy": {
+                    "private": True,
+                    "source": "seed_demo_data",
+                    "download_requires_permission": True,
+                },
+                "created_by": user,
+                "updated_by": user,
+            },
         )
-        AuditLog.objects.create(actor=user, event_type=AuditLog.EventType.PDF_RENDERED, target_model="PDFDocument", target_id=pdf_document.pk, bewohner=entry.bewohner, form=entry.form, form_entry=entry, message="Demo-PDF wurde privat erzeugt.", metadata={"source": "seed_demo_data", "sha256": sha256})
+        AuditLog.objects.create(
+            actor=user,
+            event_type=AuditLog.EventType.PDF_RENDERED,
+            target_model="PDFDocument",
+            target_id=pdf_document.pk,
+            bewohner=entry.bewohner,
+            form=entry.form,
+            form_entry=entry,
+            message="Demo-PDF wurde privat erzeugt.",
+            metadata={"source": "seed_demo_data", "sha256": sha256},
+        )
         return pdf_document

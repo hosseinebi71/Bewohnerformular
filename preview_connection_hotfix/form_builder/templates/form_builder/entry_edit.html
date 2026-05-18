@@ -1,0 +1,99 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="document-editor-layout">
+  <div class="document-titlebar panel">
+    <div>
+      <p class="eyebrow">Live-Editor</p>
+      <h2>{{ form_entry.form.title }}</h2>
+      <p>Status: {{ form_entry.get_status_display }} · Vorgang: {{ form_entry.public_id }}</p>
+    </div>
+    <div class="title-actions">
+      <span class="badge" id="preview-badge">PDF wird geladen</span>
+      <a class="button ghost" href="{% url 'form_builder:entry_detail' form_entry.id %}">Details</a>
+    </div>
+  </div>
+
+  <form id="entry-editor" class="panel form-panel" method="post" action="{% url 'form_builder:entry_save' form_entry.id %}">
+    {% csrf_token %}
+    <div class="section-label">Formulardaten bearbeiten</div>
+    <div class="form-grid government-form">
+      {% for field in entry_form %}
+        <div class="field-row">
+          <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span>*</span>{% endif %}</label>
+          {{ field }}
+          {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+          {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+    <div class="actionbar sticky-actions">
+      <button class="button ghost" formaction="{% url 'form_builder:entry_validate' form_entry.id %}" type="submit">Validieren</button>
+      <button class="button ghost" formaction="{% url 'form_builder:entry_save' form_entry.id %}" type="submit">Speichern</button>
+      <button class="button" formaction="{% url 'form_builder:entry_review' form_entry.id %}" type="submit">In Review geben</button>
+    </div>
+  </form>
+
+  <aside class="panel preview-panel document-preview-panel">
+    <div class="panel-head compact">
+      <div><p class="eyebrow">PDF-Vorschau</p><h2>Live-Dokument</h2></div>
+      <a class="button ghost" target="_blank" href="{% url 'form_builder:entry_pdf_preview' form_entry.id %}?inline=1">In neuem Tab</a>
+    </div>
+    <div class="pdf-toolbar"><span>Änderungen werden automatisch als echtes PDF neu gerendert.</span><span>Drucken · Download · Zoom über Browser-PDF-Leiste</span></div>
+    <div id="pdf-preview-status" class="pdf-preview-status">PDF-Vorschau wird geladen …</div>
+    <iframe id="pdf-live-frame" class="pdf-frame" src="about:blank" title="PDF Live Vorschau"></iframe>
+  </aside>
+</section>
+{% endblock %}
+{% block scripts %}
+<style>
+  .pdf-preview-status{padding:14px 18px;font-size:13px;font-weight:800;color:#475467;background:#f8fafc;border-bottom:1px solid var(--line)}
+  .pdf-preview-status.ok{color:#067647;background:#ecfdf3}.pdf-preview-status.error{color:#b42318;background:#fff1f3}
+</style>
+<script>
+(function(){
+  const form = document.getElementById('entry-editor');
+  const frame = document.getElementById('pdf-live-frame');
+  const statusBox = document.getElementById('pdf-preview-status');
+  const badge = document.getElementById('preview-badge');
+  if(!form || !frame) return;
+  const liveUrl = "{% url 'form_builder:entry_pdf_live_preview' form_entry.id %}";
+  let timer = null;
+  let objectUrl = null;
+  let controller = null;
+
+  function setStatus(text, kind){
+    if(statusBox){ statusBox.textContent = text; statusBox.className = 'pdf-preview-status ' + (kind || ''); }
+    if(badge){ badge.textContent = text; }
+  }
+
+  async function refreshPreview(){
+    if(controller){ controller.abort(); }
+    controller = new AbortController();
+    setStatus('PDF wird neu gerendert …', '');
+    try{
+      const data = new FormData(form);
+      const response = await fetch(liveUrl, {method:'POST', body:data, credentials:'same-origin', signal:controller.signal});
+      if(!response.ok){
+        const message = await response.text();
+        throw new Error(message || ('HTTP ' + response.status));
+      }
+      const blob = await response.blob();
+      if(objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(blob);
+      frame.src = objectUrl;
+      setStatus('PDF-Vorschau aktuell', 'ok');
+    }catch(error){
+      if(error.name === 'AbortError') return;
+      setStatus('PDF-Vorschau nicht erreichbar. Server prüfen und Seite aktualisieren.', 'error');
+      console.error('PDF preview failed:', error);
+    }
+  }
+
+  function schedule(){ clearTimeout(timer); timer = setTimeout(refreshPreview, 350); }
+  form.addEventListener('input', schedule);
+  form.addEventListener('change', schedule);
+  window.addEventListener('beforeunload', function(){ if(objectUrl) URL.revokeObjectURL(objectUrl); });
+  refreshPreview();
+})();
+</script>
+{% endblock %}

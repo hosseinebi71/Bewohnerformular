@@ -1,0 +1,10 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="settings-layout">
+  <aside class="settings-menu surface"><p class="eyebrow">Einstellungen</p><a href="{% url 'form_builder:settings_index' %}">Übersicht</a><a href="{% url 'form_builder:email_target_list' %}">E-Mail-Ziele</a><a href="{% url 'form_builder:schedule_list' %}">Zeitpläne</a><a class="active" href="{% url 'form_builder:staff_access_list' %}">Mitarbeiter</a><a href="{% url 'form_builder:profile' %}">Profil</a></aside>
+  <section class="settings-content">
+    <section class="page-intro compact-intro"><div><p class="eyebrow">Zugriff</p><h2>Mitarbeiter</h2><p>Berechtigungen für Menüs und Aktionen.</p></div>{% if can_manage_settings %}<a class="button compact" href="{% url 'form_builder:staff_access_create' %}">+ Zugriff</a>{% endif %}</section>
+    <section class="surface clean-panel"><table class="data-table compact-table"><thead><tr><th>Mitarbeiter</th><th>Formulare</th><th>Schicken</th><th>Archiv</th><th>Einstellungen</th><th></th></tr></thead><tbody>{% for profile in profiles %}<tr><td><strong>{{ profile.user.get_full_name|default:profile.user.username }}</strong><small>{{ profile.user.email }}</small></td><td>{{ profile.can_forms|yesno:'Ja,Nein' }}</td><td>{{ profile.can_send|yesno:'Ja,Nein' }}</td><td>{{ profile.can_archive|yesno:'Ja,Nein' }}</td><td>{{ profile.can_settings|yesno:'Ja,Nein' }}</td><td class="table-action">{% if can_manage_settings %}<a class="button ghost compact" href="{% url 'form_builder:staff_access_edit' profile.id %}">Bearbeiten</a>{% endif %}</td></tr>{% empty %}<tr><td colspan="6" class="empty-cell">Noch keine individuellen Zugriffe.</td></tr>{% endfor %}</tbody></table></section>
+  </section>
+</section>
+{% endblock %}

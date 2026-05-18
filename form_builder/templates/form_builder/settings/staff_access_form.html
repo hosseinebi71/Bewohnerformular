@@ -1,0 +1,7 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="settings-layout">
+  <aside class="settings-menu surface"><p class="eyebrow">Einstellungen</p><a href="{% url 'form_builder:settings_index' %}">Übersicht</a><a href="{% url 'form_builder:email_target_list' %}">E-Mail-Ziele</a><a href="{% url 'form_builder:schedule_list' %}">Zeitpläne</a><a class="active" href="{% url 'form_builder:staff_access_list' %}">Mitarbeiter</a></aside>
+  <section class="surface settings-content form-card"><div class="panel-head"><div><p class="eyebrow">Zugriff</p><h2>Mitarbeiter-Zugriff</h2></div></div><form class="settings-form compact-form" method="post">{% csrf_token %}<div class="field-row"><label>{{ access_form.user.label }}</label>{{ access_form.user }}</div><div class="permission-grid">{% for field in access_form %}{% if field.name != 'user' %}<label class="permission-tile">{{ field }}<span>{{ field.label }}</span></label>{% endif %}{% endfor %}</div>{% if access_form.errors %}<div class="message error">Bitte Eingaben prüfen.</div>{% endif %}<div class="actionbar"><a class="button ghost" href="{% url 'form_builder:staff_access_list' %}">Zurück</a><button class="button" type="submit">Speichern</button></div></form></section>
+</section>
+{% endblock %}

@@ -1,10 +1,11 @@
+import hashlib
+import json
 import uuid
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -44,6 +45,74 @@ class UUIDPrimaryKeyModel(models.Model):
         abstract = True
 
 
+class UserAccessProfile(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="form_access_profile",
+    )
+
+    class ScopeMode(models.TextChoices):
+        ALL = "all", "Alle zulaessigen Daten"
+        ORG_UNITS = "org_units", "Nur Organisationseinheiten"
+        OWN = "own", "Nur eigene Vorgaenge"
+
+    scope_mode = models.CharField(
+        max_length=16,
+        choices=ScopeMode.choices,
+        default=ScopeMode.OWN,
+        db_index=True,
+        verbose_name="Datenbereich",
+        help_text="Begrenzt Formulare, Bewohner, PDFs, Ausgangskorb und Archiv auf einen organisatorischen Bereich.",
+    )
+    org_units = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Organisationseinheiten",
+        help_text="Liste stabiler Codes, z. B. Standort/Abteilung. Leer bedeutet: kein Organisationsbereich.",
+    )
+    allowed_form_keys = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Erlaubte Formularfamilien",
+        help_text="Optionale Liste von Formular-Keys. Leer bedeutet: alle Formularfamilien im Datenbereich.",
+    )
+    can_dashboard = models.BooleanField(default=True, verbose_name="Dashboard sehen")
+    can_forms = models.BooleanField(default=True, verbose_name="Formulare sehen")
+    can_create = models.BooleanField(default=True, verbose_name="Vorgaenge erstellen")
+    can_send = models.BooleanField(default=True, verbose_name="Schicken / Versand")
+    can_archive = models.BooleanField(default=True, verbose_name="Archiv sehen")
+    can_settings = models.BooleanField(default=False, verbose_name="Einstellungen sehen")
+    can_manage_settings = models.BooleanField(default=False, verbose_name="Einstellungen verwalten")
+    is_active = models.BooleanField(default=True, verbose_name="Aktiv")
+
+    class Meta:
+        verbose_name = "Mitarbeiter-Zugriff"
+        verbose_name_plural = "Mitarbeiter-Zugriffe"
+
+    def clean(self) -> None:
+        errors = {}
+        if not isinstance(self.org_units, list):
+            errors["org_units"] = "Organisationseinheiten muessen als Liste gespeichert werden."
+        if not isinstance(self.allowed_form_keys, list):
+            errors["allowed_form_keys"] = "Formularfamilien muessen als Liste gespeichert werden."
+        if errors:
+            raise ValidationError(errors)
+
+    def normalized_org_units(self) -> list[str]:
+        if not isinstance(self.org_units, list):
+            return []
+        return [str(item).strip() for item in self.org_units if str(item).strip()]
+
+    def normalized_form_keys(self) -> list[str]:
+        if not isinstance(self.allowed_form_keys, list):
+            return []
+        return [str(item).strip() for item in self.allowed_form_keys if str(item).strip()]
+
+    def __str__(self) -> str:
+        return f"{self.user} - Zugriff"
+
+
 class Bewohner(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
     class RecordStatus(models.TextChoices):
         ACTIVE = "active", "Aktiv"
@@ -66,6 +135,12 @@ class Bewohner(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
     last_name = models.CharField(max_length=150)
     date_of_birth = models.DateField(null=True, blank=True)
     room_label = models.CharField(max_length=64, blank=True)
+    org_unit = models.CharField(
+        max_length=80,
+        blank=True,
+        db_index=True,
+        help_text="Stabiler Standort-/Abteilungscode fuer rollenbasierte Zugriffsbeschraenkung.",
+    )
     status = models.CharField(
         max_length=16,
         choices=RecordStatus.choices,
@@ -80,6 +155,7 @@ class Bewohner(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
             models.Index(fields=["public_id"]),
             models.Index(fields=["resident_number", "status"]),
             models.Index(fields=["last_name", "first_name"]),
+            models.Index(fields=["org_unit", "status"]),
         ]
         verbose_name = "Bewohner"
         verbose_name_plural = "Bewohner"
@@ -104,6 +180,12 @@ class Form(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    org_unit = models.CharField(
+        max_length=80,
+        blank=True,
+        db_index=True,
+        help_text="Optionaler Standort-/Abteilungscode fuer scoped Rollen.",
+    )
     status = models.CharField(
         max_length=16,
         choices=PublicationStatus.choices,
@@ -152,6 +234,7 @@ class Form(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
         indexes = [
             models.Index(fields=["key", "status"]),
             models.Index(fields=["status", "published_at"]),
+            models.Index(fields=["org_unit", "status"]),
         ]
         verbose_name = "Formular"
         verbose_name_plural = "Formulare"
@@ -194,13 +277,19 @@ class Form(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
             errors["supersedes"] = "Ein Formular darf sich nicht selbst ersetzen."
 
         if self.supersedes and self.supersedes.key != self.key:
-            errors["supersedes"] = "Es duerfen nur Versionen derselben Formularfamilie ersetzt werden."
+            errors["supersedes"] = (
+                "Es duerfen nur Versionen derselben Formularfamilie ersetzt werden."
+            )
 
         if self.status == self.PublicationStatus.PUBLISHED:
             if not self.pk:
-                errors["status"] = "Ein Formular muss erst gespeichert werden, bevor es veroeffentlicht werden kann."
+                errors["status"] = (
+                    "Ein Formular muss erst gespeichert werden, bevor es veroeffentlicht werden kann."
+                )
             elif not self.fields.filter(is_active=True).exists():
-                errors["status"] = "Ein Formular ohne aktive Felder darf nicht veroeffentlicht werden."
+                errors["status"] = (
+                    "Ein Formular ohne aktive Felder darf nicht veroeffentlicht werden."
+                )
 
         if errors:
             raise ValidationError(errors)
@@ -332,7 +421,9 @@ class Field(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
 
         if self.default_value is not None and self.field_type == self.FieldType.BOOLEAN:
             if not isinstance(self.default_value, bool):
-                errors["default_value"] = "Standardwert fuer Ja/Nein-Felder muss true oder false sein."
+                errors["default_value"] = (
+                    "Standardwert fuer Ja/Nein-Felder muss true oder false sein."
+                )
 
         if not isinstance(self.validation_rules, dict):
             errors["validation_rules"] = "Validierungsregeln muessen als Objekt gespeichert werden."
@@ -485,6 +576,32 @@ class FormRecipient(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
         default=True,
         help_text="Standardempfaenger fuer neue Versandvorgaenge dieses Formulars.",
     )
+    subject_template = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Optionaler Betreff. Platzhalter: {form}, {name}, {vorname}, {pkz}, {aktenzeichen}.",
+    )
+    body_template = models.TextField(
+        blank=True,
+        help_text="Optionaler E-Mail-Text. Platzhalter wie im Betreff nutzbar.",
+    )
+    dispatch_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Regulaere Versandzeit fuer dieses Formular und diesen Empfaenger.",
+    )
+    dispatch_frequency = models.CharField(
+        max_length=16,
+        blank=True,
+        choices=[("manual", "Manuell"), ("daily", "Taeglich"), ("weekly", "Woechentlich")],
+        help_text="Standard-Rhythmus fuer Versandplanung.",
+    )
+    dispatch_weekday = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(6)],
+        help_text="0=Montag bis 6=Sonntag, nur fuer woechentliche Planung.",
+    )
     config = models.JSONField(
         default=dict,
         blank=True,
@@ -498,18 +615,13 @@ class FormRecipient(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
                 fields=["form", "email", "recipient_type", "channel"],
                 name="uniq_form_recipient_per_channel",
             ),
-            models.UniqueConstraint(
-                fields=["form"],
-                condition=Q(is_default=True),
-                name="uniq_default_recipient_per_form",
-            ),
         ]
         indexes = [
             models.Index(fields=["form", "is_active"]),
             models.Index(fields=["channel", "is_active"]),
         ]
-        verbose_name = "Formularempfaenger"
-        verbose_name_plural = "Formularempfaenger"
+        verbose_name = "Formular-E-Mail-Ziel"
+        verbose_name_plural = "Formular-E-Mail-Ziele"
 
     def __str__(self) -> str:
         return f"{self.form.key} -> {self.email} ({self.channel})"
@@ -530,6 +642,12 @@ class FormSchedule(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
         Form,
         on_delete=models.PROTECT,
         related_name="schedules",
+    )
+    recipients = models.ManyToManyField(
+        FormRecipient,
+        blank=True,
+        related_name="schedules",
+        help_text="E-Mail-Ziele, die mit diesem Zeitplan verbunden sind.",
     )
     name = models.CharField(max_length=255)
     trigger_type = models.CharField(
@@ -571,6 +689,14 @@ class FormSchedule(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
         ]
         verbose_name = "Formularzeitplan"
         verbose_name_plural = "Formularzeitplaene"
+
+    def recipient_summary(self) -> str:
+        return (
+            ", ".join(
+                self.recipients.order_by("recipient_type", "email").values_list("email", flat=True)
+            )
+            or "-"
+        )
 
     def __str__(self) -> str:
         return f"{self.form.key} - {self.name}"
@@ -749,7 +875,9 @@ class OutboxItem(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
 
         if self.form_entry_id:
             if self.form_id and self.form_entry.form_id != self.form_id:
-                errors["form_entry"] = "Der Formulareintrag gehoert nicht zum ausgewaehlten Formular."
+                errors["form_entry"] = (
+                    "Der Formulareintrag gehoert nicht zum ausgewaehlten Formular."
+                )
             if self.bewohner_id and self.form_entry.bewohner_id != self.bewohner_id:
                 errors["bewohner"] = "Der Formulareintrag gehoert nicht zum ausgewaehlten Bewohner."
 
@@ -758,7 +886,9 @@ class OutboxItem(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
 
         if self.pdf_document_id and self.form_entry_id:
             if self.pdf_document.form_entry_id != self.form_entry_id:
-                errors["pdf_document"] = "Das PDF-Dokument gehoert nicht zum ausgewaehlten Formulareintrag."
+                errors["pdf_document"] = (
+                    "Das PDF-Dokument gehoert nicht zum ausgewaehlten Formulareintrag."
+                )
 
         if errors:
             raise ValidationError(errors)
@@ -895,6 +1025,19 @@ class AuditLog(UUIDPrimaryKeyModel):
         blank=True,
         help_text="Zusaetzliche, nicht frei formulierte Audit-Daten.",
     )
+    previous_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        editable=False,
+        help_text="SHA-256 Hash des vorherigen Audit-Eintrags fuer eine pruefbare Hash-Kette.",
+    )
+    entry_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        editable=False,
+        db_index=True,
+        help_text="SHA-256 Hash dieses Audit-Eintrags inklusive previous_hash.",
+    )
 
     class Meta:
         ordering = ["-occurred_at"]
@@ -906,6 +1049,41 @@ class AuditLog(UUIDPrimaryKeyModel):
         ]
         verbose_name = "Audit-Log"
         verbose_name_plural = "Audit-Logs"
+
+    def _canonical_hash_payload(self) -> dict:
+        return {
+            "id": str(self.id),
+            "occurred_at": self.occurred_at.isoformat() if self.occurred_at else "",
+            "actor_id": str(self.actor_id or ""),
+            "event_type": self.event_type,
+            "target_model": self.target_model,
+            "target_id": str(self.target_id),
+            "bewohner_id": str(self.bewohner_id or ""),
+            "form_id": str(self.form_id or ""),
+            "form_entry_id": str(self.form_entry_id or ""),
+            "remote_addr": self.remote_addr or "",
+            "user_agent": self.user_agent or "",
+            "message": self.message or "",
+            "metadata": self.metadata or {},
+            "previous_hash": self.previous_hash or "",
+        }
+
+    def calculate_entry_hash(self) -> str:
+        payload = json.dumps(
+            self._canonical_hash_payload(), sort_keys=True, default=str, separators=(",", ":")
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValidationError(
+                "AuditLog ist append-only und darf nicht nachtraeglich geaendert werden."
+            )
+        if not self.previous_hash:
+            previous = AuditLog.objects.order_by("-occurred_at", "-id").only("entry_hash").first()
+            self.previous_hash = previous.entry_hash if previous else ""
+        self.entry_hash = self.calculate_entry_hash()
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.get_event_type_display()} {self.target_model}:{self.target_id}"

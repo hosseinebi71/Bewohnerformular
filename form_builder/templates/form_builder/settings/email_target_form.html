@@ -1,0 +1,22 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="settings-layout">
+  <aside class="settings-menu surface">
+    <p class="eyebrow">Einstellungen</p><a href="{% url 'form_builder:settings_index' %}">Übersicht</a><a class="active" href="{% url 'form_builder:email_target_list' %}">E-Mail-Ziele</a><a href="{% url 'form_builder:schedule_list' %}">Zeitpläne</a><a href="{% url 'form_builder:staff_access_list' %}">Mitarbeiter</a>
+  </aside>
+  <section class="surface settings-content form-card">
+    <div class="panel-head"><div><p class="eyebrow">E-Mail-Ziel</p><h2>{% if mode == 'edit' %}Bearbeiten{% else %}Anlegen{% endif %}</h2></div></div>
+    <form class="settings-form compact-form" method="post">{% csrf_token %}
+      <div class="form-two-col"><div class="field-row"><label>{{ recipient_form.form.label }}</label>{{ recipient_form.form }}</div><div class="field-row"><label>{{ recipient_form.email.label }}</label>{{ recipient_form.email }}</div></div>
+      <div class="form-two-col"><div class="field-row"><label>{{ recipient_form.name.label }}</label>{{ recipient_form.name }}</div><div class="field-row"><label>{{ recipient_form.recipient_type.label }}</label>{{ recipient_form.recipient_type }}</div></div>
+      <div class="form-two-col"><div class="field-row"><label>{{ recipient_form.channel.label }}</label>{{ recipient_form.channel }}</div><div class="field-row field-row-checks"><label>Aktiv / Standard</label><span class="inline-checks">{{ recipient_form.is_active }} Aktiv {{ recipient_form.is_default }} Standard</span></div></div>
+      <div class="form-two-col"><div class="field-row"><label>{{ recipient_form.dispatch_frequency.label }}</label>{{ recipient_form.dispatch_frequency }}</div><div class="field-row"><label>{{ recipient_form.dispatch_weekday.label }}</label>{{ recipient_form.dispatch_weekday }}</div></div>
+      <div class="field-row"><label>{{ recipient_form.dispatch_time.label }}</label>{{ recipient_form.dispatch_time }}</div>
+      <div class="field-row"><label>{{ recipient_form.subject_template.label }}</label>{{ recipient_form.subject_template }}</div>
+      <div class="field-row"><label>{{ recipient_form.body_template.label }}</label>{{ recipient_form.body_template }}</div>
+      {% if recipient_form.errors %}<div class="message error">Bitte Eingaben prüfen.</div>{% endif %}
+      <div class="actionbar"><a class="button ghost" href="{% url 'form_builder:email_target_list' %}">Zurück</a><button class="button" type="submit">Speichern</button></div>
+    </form>
+  </section>
+</section>
+{% endblock %}

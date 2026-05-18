@@ -1,48 +1,42 @@
 # Bewohnerformular
 
-Django application for a professional resident form workflow. It supports dynamic form definitions, resident-linked form entries, review/approval steps, PDF generation, outbox processing, scheduling, and an audit-friendly archive flow.
+Django application for resident-related government form workflows with live PDF previews, review/approval, collective dispatch lists, scheduling and audit-friendly archive handling.
 
-## Features
+## What is included
 
-- Dynamic form builder models with versioned published forms
-- Draft, review, approval, rejection, ready-to-send, sent, and archive states
-- Role-aware navigation and permissions for Admin, Staff, and Viewer groups
-- Private PDF generation and protected download flow
-- Outbox queue with console email backend for local development
-- Schedule management for recurring/form-driven outbox preparation
-- Demo seed command for local testing
+- Corporate sidebar/navigation with tablet/mobile off-canvas menu
+- Search, filter and sorting controls on operational lists
+- Dynamic form definitions and resident-linked entries
+- Direct form entry without selecting a pre-existing resident
+- Live PDF previews powered by ReportLab for Windows-friendly local development
+- Collective dispatch logic for recurring forms, for example Sozialticket daily 05:00
+- Draft, review, approval, outbox, sent and archive states
+- Demo seed command for Sozialticket Antrag, ZAP Termin and Leistungsbescheid
 
 ## Local setup
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
+python -m pip install -r requirements.txt
 python manage.py migrate
-python manage.py seed_demo_data
+python manage.py seed_government_demo_forms
 python manage.py runserver
 ```
 
 Open `http://127.0.0.1:8000/`.
 
-Demo login after running the seed command:
-
-```text
-Username: demo.admin
-Password: ChangeMe!12345
-```
-
 ## Useful commands
 
 ```bash
+python manage.py check
+python manage.py seed_government_demo_forms
 python manage.py process_schedules --limit-per-schedule 100
 python manage.py process_outbox --limit 20
-python manage.py check
 ```
 
-## Security notes
+## Notes
 
-- `db.sqlite3`, generated PDFs, `private_documents/`, `.env`, and other runtime artifacts are intentionally ignored.
-- Keep production secrets in environment variables.
-- Do not serve `PRIVATE_DOCUMENT_ROOT` as public static/media content.
+- `Sozialticket Antrag` is treated as a collective working list until dispatch.
+- Sent items are archived through the outbox processing flow.
+- Generated PDFs and local runtime files are private and ignored by Git.

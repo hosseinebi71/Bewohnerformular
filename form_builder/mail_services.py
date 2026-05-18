@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
-from pathlib import Path
 
 from django.conf import settings
 from django.core.mail import EmailMessage, get_connection
-from django.db import transaction
+from django.db import connection, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import AuditLog, OutboxItem, SentFormArchive
@@ -29,7 +29,7 @@ class OutboxProcessingResult:
         )
 
 
-def get_due_outbox_queryset(limit: int | None = None):
+def get_due_outbox_queryset(limit: int | None = None, *, for_update: bool = False):
     now = timezone.now()
     queryset = (
         OutboxItem.objects.select_related(
@@ -40,38 +40,17 @@ def get_due_outbox_queryset(limit: int | None = None):
             "pdf_document",
         )
         .filter(status=OutboxItem.DeliveryStatus.PENDING)
-        .filter(next_attempt_at__isnull=True)
-        .order_by("created_at")
-    )
-    timed_queryset = (
-        OutboxItem.objects.select_related(
-            "form",
-            "form_entry",
-            "bewohner",
-            "recipient",
-            "pdf_document",
-        )
-        .filter(status=OutboxItem.DeliveryStatus.PENDING, next_attempt_at__lte=now)
+        .filter(Q(next_attempt_at__isnull=True) | Q(next_attempt_at__lte=now))
         .order_by("next_attempt_at", "created_at")
     )
-    ids = list(queryset.values_list("pk", flat=True)) + list(timed_queryset.values_list("pk", flat=True))
-    # Keep order stable and prevent duplicate ids.
-    seen = set()
-    ordered_ids = []
-    for item_id in ids:
-        if item_id not in seen:
-            seen.add(item_id)
-            ordered_ids.append(item_id)
+    if for_update:
+        select_for_update_kwargs = {}
+        if connection.features.has_select_for_update_skip_locked:
+            select_for_update_kwargs["skip_locked"] = True
+        queryset = queryset.select_for_update(**select_for_update_kwargs)
     if limit:
-        ordered_ids = ordered_ids[:limit]
-    objects_by_id = OutboxItem.objects.select_related(
-        "form",
-        "form_entry",
-        "bewohner",
-        "recipient",
-        "pdf_document",
-    ).in_bulk(ordered_ids)
-    return [objects_by_id[item_id] for item_id in ordered_ids if item_id in objects_by_id]
+        queryset = queryset[:limit]
+    return queryset
 
 
 def build_outbox_email(outbox_item: OutboxItem, *, connection=None) -> EmailMessage:
@@ -102,7 +81,9 @@ def build_outbox_email(outbox_item: OutboxItem, *, connection=None) -> EmailMess
         pdf_path = get_pdf_private_path(outbox_item.pdf_document)
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF-Datei nicht gefunden: {pdf_path}")
-        message.attach_file(str(pdf_path), mimetype=outbox_item.pdf_document.content_type or "application/pdf")
+        message.attach_file(
+            str(pdf_path), mimetype=outbox_item.pdf_document.content_type or "application/pdf"
+        )
 
     return message
 
@@ -147,6 +128,28 @@ def mark_outbox_failed(outbox_item: OutboxItem, *, error: Exception) -> None:
             "status": outbox_item.status,
         },
     )
+
+
+def archive_entry_if_all_outbox_sent(outbox_item: OutboxItem) -> None:
+    form_entry = outbox_item.form_entry
+    has_unsent_required_items = form_entry.outbox_items.filter(
+        status__in=[
+            OutboxItem.DeliveryStatus.PENDING,
+            OutboxItem.DeliveryStatus.FAILED,
+        ]
+    ).exists()
+    if has_unsent_required_items:
+        if form_entry.status != form_entry.EntryStatus.READY_TO_SEND:
+            form_entry.status = form_entry.EntryStatus.READY_TO_SEND
+            form_entry.updated_by = outbox_item.updated_by
+            form_entry.save(update_fields=["status", "updated_by", "updated_at"])
+        return
+
+    now = timezone.now()
+    form_entry.status = form_entry.EntryStatus.ARCHIVED
+    form_entry.archived_at = now
+    form_entry.updated_by = outbox_item.updated_by
+    form_entry.save(update_fields=["status", "archived_at", "updated_by", "updated_at"])
 
 
 def mark_outbox_sent(outbox_item: OutboxItem, *, provider_payload: dict | None = None) -> None:
@@ -199,7 +202,9 @@ def mark_outbox_sent(outbox_item: OutboxItem, *, provider_payload: dict | None =
                 "retention_until": now + timedelta(days=outbox_item.form.retention_period_days),
                 "archive_metadata": {
                     "source": "outbox",
-                    "pdf_sha256": outbox_item.pdf_document.sha256 if outbox_item.pdf_document_id else "",
+                    "pdf_sha256": (
+                        outbox_item.pdf_document.sha256 if outbox_item.pdf_document_id else ""
+                    ),
                 },
                 "created_by": outbox_item.created_by,
                 "updated_by": outbox_item.updated_by,
@@ -214,13 +219,16 @@ def mark_outbox_sent(outbox_item: OutboxItem, *, provider_payload: dict | None =
             bewohner=outbox_item.bewohner,
             form=outbox_item.form,
             form_entry=outbox_item.form_entry,
-            message="Formular wurde erfolgreich versendet und archiviert.",
+            message="Formular wurde erfolgreich an einen Empfaenger versendet.",
             metadata={
                 "outbox_item_id": str(outbox_item.pk),
                 "recipient_email": outbox_item.recipient.email,
-                "pdf_document_id": str(outbox_item.pdf_document_id) if outbox_item.pdf_document_id else None,
+                "pdf_document_id": (
+                    str(outbox_item.pdf_document_id) if outbox_item.pdf_document_id else None
+                ),
             },
         )
+        archive_entry_if_all_outbox_sent(outbox_item)
 
 
 def send_outbox_item(outbox_item: OutboxItem, *, connection=None) -> bool:
@@ -249,21 +257,27 @@ def send_outbox_item(outbox_item: OutboxItem, *, connection=None) -> bool:
 
 
 def process_outbox_queue(*, limit: int | None = 20) -> OutboxProcessingResult:
-    due_items = list(get_due_outbox_queryset(limit=limit))
-    if not due_items:
-        return OutboxProcessingResult()
-
+    processed = 0
     sent = 0
     failed = 0
     skipped = 0
-    with get_connection(fail_silently=False) as connection:
-        for outbox_item in due_items:
-            if outbox_item.status != OutboxItem.DeliveryStatus.PENDING:
-                skipped += 1
-                continue
-            ok = send_outbox_item(outbox_item, connection=connection)
-            if ok:
-                sent += 1
-            else:
-                failed += 1
-    return OutboxProcessingResult(processed=len(due_items), sent=sent, failed=failed, skipped=skipped)
+    max_items = limit or 1000000
+
+    with get_connection(fail_silently=False) as mail_connection:
+        while processed < max_items:
+            with transaction.atomic():
+                due_items = list(get_due_outbox_queryset(limit=1, for_update=True))
+                if not due_items:
+                    break
+                outbox_item = due_items[0]
+                processed += 1
+                if outbox_item.status != OutboxItem.DeliveryStatus.PENDING:
+                    skipped += 1
+                    continue
+                ok = send_outbox_item(outbox_item, connection=mail_connection)
+                if ok:
+                    sent += 1
+                else:
+                    failed += 1
+
+    return OutboxProcessingResult(processed=processed, sent=sent, failed=failed, skipped=skipped)

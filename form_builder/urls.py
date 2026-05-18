@@ -4,23 +4,30 @@ from .views import (
     archive_list_view,
     dashboard_view,
     draft_list_view,
+    email_target_create_view,
+    email_target_edit_view,
+    email_target_list_view,
     entry_approve_view,
     entry_create_view,
     entry_detail_view,
     entry_edit_view,
     entry_pdf_generate_view,
+    entry_pdf_live_preview_view,
+    entry_pdf_new_live_preview_view,
     entry_pdf_preview_view,
     entry_queue_view,
     entry_reject_view,
     entry_review_view,
     entry_save_view,
+    entry_send_now_view,
     entry_validate_view,
+    form_blank_pdf_view,
     form_list_view,
     outbox_list_view,
     pdf_download_view,
     process_outbox_view,
-    profile_view,
     process_schedules_view,
+    profile_view,
     review_list_view,
     schedule_create_view,
     schedule_edit_view,
@@ -28,27 +35,56 @@ from .views import (
     schedule_toggle_view,
     sent_list_view,
     settings_index_view,
+    staff_access_create_view,
+    staff_access_edit_view,
+    staff_access_list_view,
 )
 
-
 app_name = "form_builder"
-
 
 urlpatterns = [
     path("", dashboard_view, name="dashboard"),
     path("dashboard/", dashboard_view, name="dashboard"),
     path("formulare/", form_list_view, name="form_list"),
     path("formulare/<uuid:form_id>/neu/", entry_create_view, name="entry_create"),
+    path("formulare/<uuid:form_id>/leer/pdf/", form_blank_pdf_view, name="form_blank_pdf"),
+    path(
+        "formulare/<uuid:form_id>/neu/pdf/live/",
+        entry_pdf_new_live_preview_view,
+        name="entry_pdf_new_live_preview",
+    ),
     path("formulare/eintraege/<uuid:entry_id>/", entry_detail_view, name="entry_detail"),
     path("formulare/eintraege/<uuid:entry_id>/bearbeiten/", entry_edit_view, name="entry_edit"),
     path("formulare/eintraege/<uuid:entry_id>/speichern/", entry_save_view, name="entry_save"),
-    path("formulare/eintraege/<uuid:entry_id>/validieren/", entry_validate_view, name="entry_validate"),
+    path(
+        "formulare/eintraege/<uuid:entry_id>/schicken/", entry_send_now_view, name="entry_send_now"
+    ),
+    path(
+        "formulare/eintraege/<uuid:entry_id>/validieren/",
+        entry_validate_view,
+        name="entry_validate",
+    ),
     path("formulare/eintraege/<uuid:entry_id>/review/", entry_review_view, name="entry_review"),
-    path("formulare/eintraege/<uuid:entry_id>/freigeben/", entry_approve_view, name="entry_approve"),
-    path("formulare/eintraege/<uuid:entry_id>/zurueckweisen/", entry_reject_view, name="entry_reject"),
+    path(
+        "formulare/eintraege/<uuid:entry_id>/freigeben/", entry_approve_view, name="entry_approve"
+    ),
+    path(
+        "formulare/eintraege/<uuid:entry_id>/zurueckweisen/", entry_reject_view, name="entry_reject"
+    ),
     path("formulare/eintraege/<uuid:entry_id>/ausgangskorb/", entry_queue_view, name="entry_queue"),
-    path("formulare/eintraege/<uuid:entry_id>/pdf/", entry_pdf_preview_view, name="entry_pdf_preview"),
-    path("formulare/eintraege/<uuid:entry_id>/pdf/erzeugen/", entry_pdf_generate_view, name="entry_pdf_generate"),
+    path(
+        "formulare/eintraege/<uuid:entry_id>/pdf/", entry_pdf_preview_view, name="entry_pdf_preview"
+    ),
+    path(
+        "formulare/eintraege/<uuid:entry_id>/pdf/live/",
+        entry_pdf_live_preview_view,
+        name="entry_pdf_live_preview",
+    ),
+    path(
+        "formulare/eintraege/<uuid:entry_id>/pdf/erzeugen/",
+        entry_pdf_generate_view,
+        name="entry_pdf_generate",
+    ),
     path("dokumente/pdf/<uuid:pdf_id>/", pdf_download_view, name="pdf_download"),
     path("formulare/entwuerfe/", draft_list_view, name="draft_list"),
     path("formulare/review/", review_list_view, name="review_list"),
@@ -58,9 +94,31 @@ urlpatterns = [
     path("formulare/archiv/", archive_list_view, name="archive_list"),
     path("profil/", profile_view, name="profile"),
     path("einstellungen/", settings_index_view, name="settings_index"),
+    path("einstellungen/email/", email_target_list_view, name="email_target_list"),
+    path("einstellungen/email/neu/", email_target_create_view, name="email_target_create"),
+    path(
+        "einstellungen/email/<uuid:recipient_id>/bearbeiten/",
+        email_target_edit_view,
+        name="email_target_edit",
+    ),
+    path("einstellungen/mitarbeiter/", staff_access_list_view, name="staff_access_list"),
+    path("einstellungen/mitarbeiter/neu/", staff_access_create_view, name="staff_access_create"),
+    path(
+        "einstellungen/mitarbeiter/<uuid:profile_id>/bearbeiten/",
+        staff_access_edit_view,
+        name="staff_access_edit",
+    ),
     path("einstellungen/zeitplaene/", schedule_list_view, name="schedule_list"),
     path("einstellungen/zeitplaene/neu/", schedule_create_view, name="schedule_create"),
-    path("einstellungen/zeitplaene/<uuid:schedule_id>/bearbeiten/", schedule_edit_view, name="schedule_edit"),
-    path("einstellungen/zeitplaene/<uuid:schedule_id>/umschalten/", schedule_toggle_view, name="schedule_toggle"),
+    path(
+        "einstellungen/zeitplaene/<uuid:schedule_id>/bearbeiten/",
+        schedule_edit_view,
+        name="schedule_edit",
+    ),
+    path(
+        "einstellungen/zeitplaene/<uuid:schedule_id>/umschalten/",
+        schedule_toggle_view,
+        name="schedule_toggle",
+    ),
     path("einstellungen/zeitplaene/verarbeiten/", process_schedules_view, name="schedule_process"),
 ]

@@ -13,7 +13,9 @@ from .models import (
     OutboxItem,
     PDFDocument,
     SentFormArchive,
+    UserAccessProfile,
 )
+from .schedule_services import sync_schedule_for_recipient
 
 
 class UserStampedAdminMixin:
@@ -91,11 +93,12 @@ class BewohnerAdmin(UserStampedAdminMixin, admin.ModelAdmin):
         "first_name",
         "date_of_birth",
         "room_label",
+        "org_unit",
         "status",
         "updated_at",
     )
-    list_filter = ("status",)
-    search_fields = ("resident_number", "first_name", "last_name", "room_label")
+    list_filter = ("status", "org_unit")
+    search_fields = ("resident_number", "first_name", "last_name", "room_label", "org_unit")
     readonly_fields = ("id", "public_id", "created_at", "updated_at")
     fields = (
         "id",
@@ -105,6 +108,7 @@ class BewohnerAdmin(UserStampedAdminMixin, admin.ModelAdmin):
         "last_name",
         "date_of_birth",
         "room_label",
+        "org_unit",
         "status",
         "notes",
         "created_at",
@@ -119,13 +123,14 @@ class FormAdmin(UserStampedAdminMixin, admin.ModelAdmin):
         "key",
         "version",
         "status",
+        "org_unit",
         "review_required",
         "is_archivable",
         "published_at",
         "updated_at",
     )
-    list_filter = ("status", "review_required", "is_archivable")
-    search_fields = ("title", "key", "description")
+    list_filter = ("status", "org_unit", "review_required", "is_archivable")
+    search_fields = ("title", "key", "description", "org_unit")
     readonly_fields = ("id", "schema", "published_at", "created_at", "updated_at")
     fields = (
         "id",
@@ -133,6 +138,7 @@ class FormAdmin(UserStampedAdminMixin, admin.ModelAdmin):
         "version",
         "title",
         "description",
+        "org_unit",
         "status",
         "supersedes",
         "review_required",
@@ -173,6 +179,7 @@ class FormAdmin(UserStampedAdminMixin, admin.ModelAdmin):
                     "version",
                     "title",
                     "description",
+                    "org_unit",
                     "status",
                     "supersedes",
                     "review_required",
@@ -253,77 +260,161 @@ class FieldAdmin(PublishedFormReadOnlyMixin, UserStampedAdminMixin, admin.ModelA
 
 
 @admin.register(FormRecipient)
-class FormRecipientAdmin(PublishedFormReadOnlyMixin, UserStampedAdminMixin, admin.ModelAdmin):
+class FormRecipientAdmin(UserStampedAdminMixin, admin.ModelAdmin):
     list_display = (
         "email",
         "name",
         "form",
         "recipient_type",
         "channel",
+        "dispatch_frequency",
+        "dispatch_time",
+        "schedule_summary",
         "is_default",
         "is_active",
         "updated_at",
     )
-    list_filter = ("channel", "recipient_type", "is_default", "is_active")
-    search_fields = ("email", "name", "form__title", "form__key")
-    readonly_fields = ("id", "created_at", "updated_at")
+    list_filter = (
+        "form",
+        "channel",
+        "recipient_type",
+        "dispatch_frequency",
+        "is_default",
+        "is_active",
+    )
+    search_fields = ("email", "name", "form__title", "form__key", "subject_template")
+    readonly_fields = ("id", "created_at", "updated_at", "schedule_summary")
     autocomplete_fields = ("form",)
-
-    def get_readonly_fields(self, request, obj=None):
-        readonly_fields = list(super().get_readonly_fields(request, obj))
-        if obj and self._is_published_form_object(obj):
-            readonly_fields.extend(
-                [
+    fieldsets = (
+        (
+            "Formular und Empfaenger",
+            {
+                "fields": (
+                    "id",
                     "form",
                     "name",
                     "email",
                     "recipient_type",
                     "channel",
-                    "is_default",
                     "is_active",
-                    "config",
-                ]
-            )
-        return readonly_fields
+                    "is_default",
+                )
+            },
+        ),
+        (
+            "Versandplanung",
+            {
+                "fields": (
+                    "dispatch_frequency",
+                    "dispatch_weekday",
+                    "dispatch_time",
+                    "schedule_summary",
+                )
+            },
+        ),
+        ("E-Mail Vorlage", {"fields": ("subject_template", "body_template")}),
+        ("Technik", {"classes": ("collapse",), "fields": ("config", "created_at", "updated_at")}),
+    )
+    actions = ("sync_selected_schedules",)
+
+    def schedule_summary(self, obj):
+        if not obj or not obj.pk:
+            return "Nach dem Speichern wird der passende Zeitplan verbunden."
+        schedules = obj.schedules.order_by("name")
+        if not schedules.exists():
+            return "Kein automatischer Zeitplan verbunden."
+        return ", ".join(
+            f"{schedule.name} ({schedule.get_status_display()})" for schedule in schedules
+        )
+
+    schedule_summary.short_description = "Verbundene Zeitplaene"
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        sync_schedule_for_recipient(obj, user=request.user)
+
+    @admin.action(description="Zeitplaene fuer ausgewaehlte E-Mail-Ziele synchronisieren")
+    def sync_selected_schedules(self, request, queryset):
+        count = 0
+        for recipient in queryset:
+            sync_schedule_for_recipient(recipient, user=request.user)
+            count += 1
+        self.message_user(
+            request,
+            f"{count} E-Mail-Ziel(e) wurden mit Zeitplaenen synchronisiert.",
+            level=messages.SUCCESS,
+        )
 
 
 @admin.register(FormSchedule)
-class FormScheduleAdmin(PublishedFormReadOnlyMixin, UserStampedAdminMixin, admin.ModelAdmin):
+class FormScheduleAdmin(UserStampedAdminMixin, admin.ModelAdmin):
     list_display = (
         "name",
         "form",
         "trigger_type",
         "status",
+        "recipient_summary",
         "timezone",
         "next_run_at",
         "last_run_at",
         "is_active",
     )
-    list_filter = ("trigger_type", "status", "is_active", "timezone")
-    search_fields = ("name", "form__title", "form__key", "cron_expression")
-    readonly_fields = ("id", "created_at", "updated_at")
+    list_filter = ("form", "trigger_type", "status", "is_active", "timezone", "recipients__channel")
+    search_fields = (
+        "name",
+        "form__title",
+        "form__key",
+        "cron_expression",
+        "recipients__email",
+        "recipients__name",
+    )
+    readonly_fields = ("id", "created_at", "updated_at", "recipient_summary")
     autocomplete_fields = ("form",)
-
-    def get_readonly_fields(self, request, obj=None):
-        readonly_fields = list(super().get_readonly_fields(request, obj))
-        if obj and self._is_published_form_object(obj):
-            readonly_fields.extend(
-                [
-                    "form",
-                    "name",
-                    "trigger_type",
-                    "status",
+    filter_horizontal = ("recipients",)
+    fieldsets = (
+        ("Zeitplan", {"fields": ("id", "name", "form", "trigger_type", "status", "is_active")}),
+        ("E-Mail-Ziele", {"fields": ("recipients", "recipient_summary")}),
+        (
+            "Ausfuehrung",
+            {
+                "fields": (
                     "timezone",
                     "cron_expression",
                     "start_at",
                     "end_at",
                     "next_run_at",
                     "last_run_at",
-                    "is_active",
-                    "config",
-                ]
+                )
+            },
+        ),
+        ("Technik", {"classes": ("collapse",), "fields": ("config", "created_at", "updated_at")}),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("form").prefetch_related("recipients")
+
+    def recipient_summary(self, obj):
+        if not obj or not obj.pk:
+            return "-"
+        return (
+            ", ".join(
+                obj.recipients.order_by("recipient_type", "email").values_list("email", flat=True)
             )
-        return readonly_fields
+            or "-"
+        )
+
+    recipient_summary.short_description = "E-Mail-Ziele"
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        schedule = form.instance
+        config = dict(schedule.config or {})
+        config["recipient_ids"] = [
+            str(pk) for pk in schedule.recipients.values_list("pk", flat=True)
+        ]
+        schedule.config = config
+        schedule.updated_by = request.user
+        schedule.save(update_fields=["config", "updated_by", "updated_at"])
 
 
 @admin.register(FormEntry)
@@ -537,6 +628,7 @@ class AuditLogAdmin(admin.ModelAdmin):
         "target_id",
         "actor",
         "bewohner",
+        "entry_hash",
     )
     list_filter = ("event_type", "target_model")
     search_fields = ("target_model", "target_id", "message", "actor__username")
@@ -554,6 +646,8 @@ class AuditLogAdmin(admin.ModelAdmin):
         "user_agent",
         "message",
         "metadata",
+        "previous_hash",
+        "entry_hash",
     )
 
     def has_add_permission(self, request):
@@ -564,3 +658,43 @@ class AuditLogAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(UserAccessProfile)
+class UserAccessProfileAdmin(UserStampedAdminMixin, admin.ModelAdmin):
+    list_display = (
+        "user",
+        "is_active",
+        "scope_mode",
+        "can_dashboard",
+        "can_forms",
+        "can_create",
+        "can_send",
+        "can_archive",
+        "can_settings",
+        "can_manage_settings",
+    )
+    list_filter = (
+        "is_active",
+        "scope_mode",
+        "can_settings",
+        "can_manage_settings",
+        "can_send",
+        "can_archive",
+    )
+    search_fields = ("user__username", "user__first_name", "user__last_name", "user__email")
+    autocomplete_fields = ("user",)
+    readonly_fields = ("id", "created_at", "updated_at")
+    fields = (
+        "id",
+        "user",
+        "is_active",
+        "scope_mode",
+        "org_units",
+        "allowed_form_keys",
+        ("can_dashboard", "can_forms"),
+        ("can_create", "can_send", "can_archive"),
+        ("can_settings", "can_manage_settings"),
+        "created_at",
+        "updated_at",
+    )

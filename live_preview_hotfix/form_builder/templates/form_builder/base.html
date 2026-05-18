@@ -1,0 +1,63 @@
+{% load static %}
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title|default:"Formularsystem" }} · Bewohnerformular</title>
+  <link rel="stylesheet" href="{% static 'form_builder/app.css' %}">
+</head>
+<body>
+  <div class="mobile-topbar">
+    <button class="menu-button" type="button" aria-label="Menue oeffnen" data-menu-toggle><span></span><span></span><span></span></button>
+    <a class="brand mini" href="{% url 'form_builder:dashboard' %}"><span class="brand-mark">BF</span><span><strong>Bewohnerformular</strong><small>Secure Workflow</small></span></a>
+    <span class="mobile-user">{{ request.user.username }}</span>
+  </div>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Seitennavigation">
+      <a class="brand" href="{% url 'form_builder:dashboard' %}">
+        <span class="brand-mark">BF</span>
+        <span><strong>Bewohnerformular</strong><small>Behördlicher Formularprozess</small></span>
+      </a>
+      <nav class="nav" aria-label="Hauptnavigation">
+        {% for item in navigation_items %}
+          <a href="{% url item.url_name %}" class="nav-link {% if item.active %}active{% endif %}">
+            <span>{{ item.label }}</span>
+          </a>
+        {% endfor %}
+      </nav>
+      <div class="sidebar-footer">
+        <span class="eyebrow">Angemeldet</span>
+        <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Bewohnerbezogene Verwaltungsprozesse</p>
+          <h1>{{ page_title|default:"Dashboard" }}</h1>
+        </div>
+        <div class="user-pill"><span>{{ request.user.username }}</span></div>
+      </header>
+      {% if messages %}
+        <section class="messages" aria-live="polite">
+          {% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}
+        </section>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <div class="backdrop" data-menu-close></div>
+  <script>
+    (function(){
+      const openBtn = document.querySelector('[data-menu-toggle]');
+      const closeArea = document.querySelector('[data-menu-close]');
+      function close(){ document.body.classList.remove('nav-open'); }
+      if(openBtn){ openBtn.addEventListener('click', function(){ document.body.classList.toggle('nav-open'); }); }
+      if(closeArea){ closeArea.addEventListener('click', close); }
+      document.addEventListener('keydown', function(e){ if(e.key === 'Escape') close(); });
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,14 +1,24 @@
 from copy import deepcopy
 from datetime import date, datetime
 from decimal import Decimal
+from uuid import uuid4
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from .models import AuditLog, Bewohner, Field, Form, FormEntry, FormRecipient, OutboxItem, PDFDocument
-
+from .models import (
+    AuditLog,
+    Bewohner,
+    Field,
+    Form,
+    FormEntry,
+    FormRecipient,
+    OutboxItem,
+    PDFDocument,
+)
+from .pdf_services import generate_entry_pdf_document, get_latest_generated_pdf_document
 
 FIELD_WIDGETS = {
     Field.FieldType.TEXTAREA: forms.Textarea(attrs={"rows": 4}),
@@ -87,6 +97,7 @@ def build_form_field(field_definition: dict) -> forms.Field:
     initial = field_definition.get("default_value")
     placeholder = field_definition.get("placeholder", "")
     validation_rules = field_definition.get("validation_rules") or {}
+    ui_config = field_definition.get("ui_config") or {}
     widget = FIELD_WIDGETS.get(field_type)
 
     common_kwargs = {
@@ -95,6 +106,15 @@ def build_form_field(field_definition: dict) -> forms.Field:
         "help_text": help_text,
         "initial": initial,
     }
+    if ui_config.get("widget") == "signature":
+        common_kwargs["widget"] = forms.HiddenInput(
+            attrs={
+                "class": "signature-value",
+                "data-signature-field": "1",
+                "data-signature-label": label,
+            }
+        )
+        return forms.CharField(**common_kwargs)
     if widget:
         common_kwargs["widget"] = widget
     if placeholder and "widget" in common_kwargs:
@@ -123,7 +143,9 @@ def build_form_field(field_definition: dict) -> forms.Field:
     if field_type == Field.FieldType.DATETIME:
         return forms.DateTimeField(**common_kwargs)
     if field_type == Field.FieldType.BOOLEAN:
-        return forms.BooleanField(required=required, label=label, help_text=help_text, initial=initial)
+        return forms.BooleanField(
+            required=required, label=label, help_text=help_text, initial=initial
+        )
     if field_type in (Field.FieldType.SELECT, Field.FieldType.RADIO):
         choices = normalize_choices(field_definition.get("choices", []))
         if field_type == Field.FieldType.RADIO:
@@ -155,15 +177,78 @@ def normalize_choices(choices: list[dict]) -> list[tuple[str, str]]:
     return [(choice["value"], choice["label"]) for choice in choices]
 
 
+def _text_value(payload: dict, *keys: str) -> str:
+    for key in keys:
+        value = payload.get(key)
+        if value not in (None, ""):
+            return str(value).strip()
+    return ""
+
+
+def ensure_bewohner_from_entry_payload(*, payload: dict, user) -> Bewohner:
+    """Create a resident reference from the form itself.
+
+    The application still stores entries against Bewohner for audit/archive integrity,
+    but the user does not have to choose a pre-existing resident while filling a form.
+    """
+    last_name = _text_value(payload, "name", "nachname", "familienname") or "Unbekannt"
+    first_name = _text_value(payload, "vorname", "first_name") or ""
+    date_of_birth = (
+        payload.get("geb_am") or payload.get("geburtsdatum") or payload.get("date_of_birth") or None
+    )
+    room_label = _text_value(payload, "zimmer", "room", "raum")
+    pkz = _text_value(payload, "pkz", "personalkennzeichen", "aktenzeichen")
+    stable_hint = pkz or f"{last_name}-{first_name}-{uuid4().hex[:8]}"
+    resident_number = f"FORM-{stable_hint}"[:64]
+
+    bewohner, created = Bewohner.objects.get_or_create(
+        resident_number=resident_number,
+        defaults={
+            "first_name": first_name,
+            "last_name": last_name,
+            "date_of_birth": date_of_birth or None,
+            "room_label": room_label,
+            "status": Bewohner.RecordStatus.ACTIVE,
+            "notes": "Automatisch aus einem Formularvorgang erzeugte Arbeitsreferenz.",
+            "created_by": user,
+            "updated_by": user,
+        },
+    )
+    if not created:
+        update_fields = []
+        if first_name and bewohner.first_name != first_name:
+            bewohner.first_name = first_name
+            update_fields.append("first_name")
+        if last_name and bewohner.last_name != last_name:
+            bewohner.last_name = last_name
+            update_fields.append("last_name")
+        if date_of_birth and not bewohner.date_of_birth:
+            bewohner.date_of_birth = date_of_birth
+            update_fields.append("date_of_birth")
+        if room_label and bewohner.room_label != room_label:
+            bewohner.room_label = room_label
+            update_fields.append("room_label")
+        bewohner.updated_by = user
+        update_fields.extend(["updated_by", "updated_at"])
+        bewohner.save(update_fields=update_fields)
+    return bewohner
+
+
 def create_form_entry_from_validated(
     *,
     form_definition: Form,
-    bewohner: Bewohner,
+    bewohner: Bewohner | None = None,
     cleaned_data: dict,
     user,
 ) -> FormEntry:
     schema = get_form_schema(form_definition)
+    explicit_bewohner = cleaned_data.get("bewohner")
     payload = serialize_entry_data(cleaned_data, schema)
+    bewohner = (
+        bewohner
+        or explicit_bewohner
+        or ensure_bewohner_from_entry_payload(payload=payload, user=user)
+    )
     with transaction.atomic():
         form_entry = FormEntry.objects.create(
             form=form_definition,
@@ -184,7 +269,9 @@ def save_draft_from_validated(*, form_entry: FormEntry, cleaned_data: dict, user
     form_entry.validation_errors = {}
     form_entry.status = FormEntry.EntryStatus.DRAFT
     form_entry.updated_by = user
-    form_entry.save(update_fields=["data", "validation_errors", "status", "updated_by", "updated_at"])
+    form_entry.save(
+        update_fields=["data", "validation_errors", "status", "updated_by", "updated_at"]
+    )
     return form_entry
 
 
@@ -202,7 +289,9 @@ def submit_draft_for_review(form_entry: FormEntry, cleaned_data: dict, user) -> 
         FormEntry.EntryStatus.DRAFT,
         FormEntry.EntryStatus.REJECTED,
     ):
-        raise ValidationError("Nur Entwuerfe oder zurueckgewiesene Eintraege koennen in Review gesetzt werden.")
+        raise ValidationError(
+            "Nur Entwuerfe oder zurueckgewiesene Eintraege koennen in Review gesetzt werden."
+        )
 
     schema = form_entry.form_snapshot or get_form_schema(form_entry.form)
     form_entry.data = serialize_entry_data(cleaned_data, schema)
@@ -223,9 +312,9 @@ def submit_draft_for_review(form_entry: FormEntry, cleaned_data: dict, user) -> 
     return form_entry
 
 
-
-
-def _create_audit_log(*, actor, event_type, form_entry: FormEntry, message: str, metadata: dict | None = None) -> None:
+def _create_audit_log(
+    *, actor, event_type, form_entry: FormEntry, message: str, metadata: dict | None = None
+) -> None:
     AuditLog.objects.create(
         actor=actor,
         event_type=event_type,
@@ -274,10 +363,28 @@ def reject_entry_for_correction(*, form_entry: FormEntry, user, reason: str = ""
     return form_entry
 
 
-def get_latest_generated_pdf_document(form_entry: FormEntry) -> PDFDocument | None:
+def _format_recipient_template(template: str, form_entry: FormEntry) -> str:
+    if not template:
+        return ""
+    data = form_entry.data or {}
+    values = {
+        "form": form_entry.form.title,
+        "name": data.get("name") or getattr(form_entry.bewohner, "last_name", ""),
+        "vorname": data.get("vorname") or getattr(form_entry.bewohner, "first_name", ""),
+        "pkz": data.get("pkz", ""),
+        "aktenzeichen": data.get("aktenzeichen", ""),
+    }
+    try:
+        return template.format(**values)
+    except Exception:
+        return template
+
+
+def get_latest_final_pdf_document(form_entry: FormEntry) -> PDFDocument | None:
     return (
         PDFDocument.objects.filter(
             form_entry=form_entry,
+            document_kind=PDFDocument.DocumentKind.FINAL,
             status=PDFDocument.GenerationStatus.GENERATED,
         )
         .order_by("-generated_at", "-created_at")
@@ -285,23 +392,43 @@ def get_latest_generated_pdf_document(form_entry: FormEntry) -> PDFDocument | No
     )
 
 
+def get_or_create_final_pdf_document(*, form_entry: FormEntry, user) -> PDFDocument:
+    pdf_document = get_latest_final_pdf_document(form_entry)
+    if pdf_document:
+        return pdf_document
+    return generate_entry_pdf_document(
+        form_entry=form_entry,
+        user=user,
+        document_kind=PDFDocument.DocumentKind.FINAL,
+    )
+
+
 def queue_entry_for_delivery(*, form_entry: FormEntry, user) -> list[OutboxItem]:
     if form_entry.status != FormEntry.EntryStatus.APPROVED:
-        raise ValidationError("Nur freigegebene Eintraege koennen in den Ausgangskorb gestellt werden.")
+        raise ValidationError(
+            "Nur freigegebene Eintraege koennen in den Ausgangskorb gestellt werden."
+        )
 
-    pdf_document = get_latest_generated_pdf_document(form_entry)
-    if not pdf_document:
-        raise ValidationError("Bitte zuerst eine PDF-Vorschau erzeugen, bevor der Eintrag in den Ausgangskorb gestellt wird.")
+    if OutboxItem.objects.filter(
+        form_entry=form_entry, status=OutboxItem.DeliveryStatus.PENDING
+    ).exists():
+        raise ValidationError("Fuer diesen Eintrag gibt es bereits offene Versandpositionen.")
 
     recipients = list(
         FormRecipient.objects.filter(
-            form=form_entry.form,
-            is_active=True,
-            is_default=True,
+            form=form_entry.form, is_active=True, is_default=True
         ).order_by("recipient_type", "email")
     )
     if not recipients:
-        raise ValidationError("Fuer dieses Formular ist kein aktiver Standard-Empfaenger hinterlegt.")
+        recipients = list(
+            FormRecipient.objects.filter(form=form_entry.form, is_active=True).order_by(
+                "recipient_type", "email"
+            )
+        )
+    if not recipients:
+        raise ValidationError("Fuer dieses Formular ist kein aktives E-Mail-Ziel hinterlegt.")
+
+    pdf_document = get_or_create_final_pdf_document(form_entry=form_entry, user=user)
 
     created_items: list[OutboxItem] = []
     with transaction.atomic():
@@ -317,14 +444,17 @@ def queue_entry_for_delivery(*, form_entry: FormEntry, user) -> list[OutboxItem]
                 recipient=recipient,
                 pdf_document=pdf_document,
                 status=OutboxItem.DeliveryStatus.PENDING,
-                subject=f"{form_entry.form.title} - {form_entry.bewohner}",
-                body="Dieses Formular wurde zur sicheren Verarbeitung in den Ausgangskorb gestellt.",
+                subject=_format_recipient_template(recipient.subject_template, form_entry)
+                or f"{form_entry.form.title} - {form_entry.bewohner}",
+                body=_format_recipient_template(recipient.body_template, form_entry)
+                or "Anbei erhalten Sie das Formular als PDF.",
                 payload={
                     "form_entry_id": str(form_entry.pk),
                     "recipient_id": str(recipient.pk),
                     "queued_by": str(user.pk) if user else None,
                     "pdf_document_id": str(pdf_document.pk),
                     "pdf_sha256": pdf_document.sha256,
+                    "source": "manual_send",
                 },
                 next_attempt_at=timezone.now(),
                 created_by=user,
@@ -336,7 +466,7 @@ def queue_entry_for_delivery(*, form_entry: FormEntry, user) -> list[OutboxItem]
             actor=user,
             event_type=AuditLog.EventType.STATUS_CHANGED,
             form_entry=form_entry,
-            message="Formulareintrag wurde in den Ausgangskorb gestellt.",
+            message="Formulareintrag wurde zum Versand vorgemerkt.",
             metadata={
                 "new_status": FormEntry.EntryStatus.READY_TO_SEND,
                 "outbox_item_count": len(created_items),
@@ -345,6 +475,8 @@ def queue_entry_for_delivery(*, form_entry: FormEntry, user) -> list[OutboxItem]
         )
 
     return created_items
+
+
 def serialize_entry_data(cleaned_data: dict, schema: dict) -> dict:
     payload = {}
     schema_keys = {field_definition["key"] for field_definition in schema.get("fields", [])}

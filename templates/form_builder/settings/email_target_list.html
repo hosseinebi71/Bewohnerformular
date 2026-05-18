@@ -1,0 +1,22 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="settings-layout">
+  <aside class="settings-menu surface">
+    <p class="eyebrow">Einstellungen</p>
+    <a href="{% url 'form_builder:settings_index' %}">Übersicht</a>
+    <a class="active" href="{% url 'form_builder:email_target_list' %}">E-Mail-Ziele</a>
+    <a href="{% url 'form_builder:schedule_list' %}">Zeitpläne</a>
+    <a href="{% url 'form_builder:staff_access_list' %}">Mitarbeiter</a>
+    <a href="{% url 'form_builder:profile' %}">Profil</a>
+  </aside>
+  <section class="settings-content">
+    <section class="page-intro compact-intro"><div><p class="eyebrow">Versand</p><h2>E-Mail-Ziele</h2><p>Empfänger pro Formular. TO, CC und BCC sind möglich.</p></div>{% if can_manage_settings %}<a class="button compact" href="{% url 'form_builder:email_target_create' %}">+ E-Mail-Ziel</a>{% endif %}</section>
+    <section class="surface clean-panel" data-table-shell>
+      <div class="commandbar compact"><input class="searchbox" type="search" placeholder="Formular oder E-Mail suchen" data-table-search><select class="sort-select" data-table-sort><option value="title-asc">Formular A-Z</option><option value="email-asc">E-Mail A-Z</option></select><span class="table-count" data-table-count></span></div>
+      <div class="table-scroll"><table class="data-table" data-table><thead><tr><th>Formular</th><th>E-Mail</th><th>Typ</th><th>Rhythmus</th><th></th></tr></thead><tbody>
+      {% for recipient in recipients %}<tr data-row data-title="{{ recipient.form.title }}" data-email="{{ recipient.email }}" data-search="{{ recipient.form.title }} {{ recipient.email }} {{ recipient.name }} {{ recipient.get_recipient_type_display }} {{ recipient.get_channel_display }}"><td><strong>{{ recipient.form.title }}</strong><small>{{ recipient.name|default:'-' }}</small></td><td>{{ recipient.email }}</td><td>{{ recipient.get_recipient_type_display }} · {{ recipient.get_channel_display }}</td><td>{{ recipient.get_dispatch_frequency_display|default:'Manuell' }}{% if recipient.dispatch_time %} · {{ recipient.dispatch_time|time:'H:i' }}{% endif %}</td><td class="table-action">{% if can_manage_settings %}<a class="button ghost compact" href="{% url 'form_builder:email_target_edit' recipient.id %}">Bearbeiten</a>{% endif %}</td></tr>{% empty %}<tr data-empty><td colspan="5" class="empty-cell">Keine E-Mail-Ziele.</td></tr>{% endfor %}
+      </tbody></table></div>
+    </section>
+  </section>
+</section>
+{% endblock %}

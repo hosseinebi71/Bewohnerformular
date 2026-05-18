@@ -1,0 +1,8 @@
+Diese ZIP ist ein kompletter Projektstand. Zum Testen den Ordner entpacken, virtuelle Umgebung aktivieren, Abhaengigkeiten installieren, migrieren und Demo-Formulare erzeugen:
+
+python manage.py makemigrations form_builder
+python manage.py migrate
+python manage.py seed_government_demo_forms
+python manage.py runserver
+
+Wichtig: Diese Version fragt beim Anlegen eines Formularvorgangs keinen Bewohner mehr ab. Name, Vorname, PKZ und Geburtsdatum werden direkt im Formular erfasst. Intern wird daraus eine geschuetzte Arbeitsreferenz erzeugt, damit Audit, Archiv und PDF-Zuordnung stabil bleiben.

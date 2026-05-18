@@ -1,0 +1,155 @@
+{% load static %}
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title|default:"Formularsystem" }} · Bewohnerformular</title>
+  <link rel="stylesheet" href="{% static 'form_builder/app.css' %}">
+</head>
+<body>
+  <header class="mobile-topbar" aria-label="Mobile Kopfzeile">
+    <button class="menu-button" type="button" aria-label="Menue oeffnen" data-menu-toggle><span></span><span></span><span></span></button>
+    <a class="brand mini" href="{% url 'form_builder:dashboard' %}">
+      <span class="brand-mark">BF</span>
+      <span><strong>Bewohnerformular</strong><small>Formularprozesse</small></span>
+    </a>
+    <span class="mobile-user">{{ request.user.username }}</span>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar" aria-label="Seitennavigation">
+      <div class="brand-row">
+        <a class="brand" href="{% url 'form_builder:dashboard' %}">
+          <span class="brand-mark">BF</span>
+          <span><strong>Bewohnerformular</strong><small>Formularprozesse</small></span>
+        </a>
+        <button class="sidebar-toggle" type="button" title="Sidebar einklappen" aria-label="Sidebar einklappen" data-sidebar-collapse><span class="collapse-icon">‹</span></button>
+      </div>
+      <nav class="nav" aria-label="Hauptnavigation">
+        {% for item in navigation_items %}
+          <a href="{% url item.url_name %}" class="nav-link {% if item.active %}active{% endif %}" data-section="{{ item.section }}">
+            <span class="nav-icon">{{ item.icon|default:"•" }}</span>
+            <span>{{ item.label }}</span>
+          </a>
+        {% endfor %}
+      </nav>
+      <div class="sidebar-footer">
+        <span class="eyebrow">Angemeldet</span>
+        <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+        <form method="post" action="{% url 'logout' %}" class="logout-form">
+          {% csrf_token %}
+          <button type="submit" class="logout-link">Abmelden</button>
+        </form>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Arbeitsbereich</p>
+          <h1>{{ page_title|default:"Dashboard" }}</h1>
+        </div>
+        <div class="topbar-actions">
+          <a class="button ghost" href="{% url 'form_builder:form_list' %}">Neuer Vorgang</a>
+          <span class="status-pill"><span class="status-dot"></span> Bereit</span>
+          <span class="user-pill">{{ request.user.username }}</span>
+        </div>
+      </header>
+      {% if messages %}
+        <section class="messages" aria-live="polite">
+          {% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}
+        </section>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <div class="backdrop" data-menu-close></div>
+
+  <script>
+    (function(){
+      const openBtn = document.querySelector('[data-menu-toggle]');
+      const closeArea = document.querySelector('[data-menu-close]');
+      const collapseBtn = document.querySelector('[data-sidebar-collapse]');
+      const collapsed = localStorage.getItem('bf-sidebar-collapsed') === '1';
+      if(collapsed) document.body.classList.add('sidebar-collapsed');
+      function syncCollapseButton(){
+        if(!collapseBtn) return;
+        const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+        collapseBtn.setAttribute('title', isCollapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen');
+        collapseBtn.setAttribute('aria-label', isCollapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen');
+        const icon = collapseBtn.querySelector('.collapse-icon');
+        if(icon) icon.textContent = isCollapsed ? '›' : '‹';
+      }
+      syncCollapseButton();
+      function closeNav(){ document.body.classList.remove('nav-open'); }
+      if(openBtn){ openBtn.addEventListener('click', function(){ document.body.classList.toggle('nav-open'); }); }
+      if(closeArea){ closeArea.addEventListener('click', closeNav); }
+      if(collapseBtn){ collapseBtn.addEventListener('click', function(){
+        document.body.classList.toggle('sidebar-collapsed');
+        localStorage.setItem('bf-sidebar-collapsed', document.body.classList.contains('sidebar-collapsed') ? '1' : '0');
+        syncCollapseButton();
+      }); }
+      document.addEventListener('keydown', function(event){ if(event.key === 'Escape') closeNav(); });
+      document.querySelectorAll('.nav-link').forEach(function(link){ link.addEventListener('click', closeNav); });
+    })();
+
+    (function(){
+      function normalize(value){ return (value || '').toString().toLowerCase().trim(); }
+      function numeric(value){ const n = Number(value || 0); return Number.isFinite(n) ? n : 0; }
+      document.querySelectorAll('[data-table-shell]').forEach(function(shell){
+        const table = shell.querySelector('table[data-table]');
+        if(!table) return;
+        const tbody = table.tBodies[0];
+        const rows = Array.from(tbody.querySelectorAll('tr[data-row]'));
+        const emptyRow = tbody.querySelector('tr[data-empty]');
+        const search = shell.querySelector('[data-table-search]');
+        const filters = Array.from(shell.querySelectorAll('[data-table-filter]'));
+        const sort = shell.querySelector('[data-table-sort]');
+        const counter = shell.querySelector('[data-table-count]');
+
+        function compare(a, b, mode){
+          const [field, direction] = (mode || '').split('-');
+          let av = a.dataset[field] || '';
+          let bv = b.dataset[field] || '';
+          if(['updated','sent','archived','count','due','version'].includes(field)){
+            av = numeric(av); bv = numeric(bv);
+          } else {
+            av = normalize(av); bv = normalize(bv);
+          }
+          if(av < bv) return direction === 'desc' ? 1 : -1;
+          if(av > bv) return direction === 'desc' ? -1 : 1;
+          return 0;
+        }
+
+        function apply(){
+          const term = normalize(search ? search.value : '');
+          let visible = [];
+          rows.forEach(function(row){
+            const haystack = normalize(row.dataset.search || row.textContent);
+            let ok = !term || haystack.includes(term);
+            filters.forEach(function(filter){
+              const value = normalize(filter.value);
+              const key = filter.dataset.tableFilter;
+              if(value && normalize(row.dataset[key]) !== value) ok = false;
+            });
+            row.style.display = ok ? '' : 'none';
+            if(ok) visible.push(row);
+          });
+          if(sort && sort.value){
+            visible.sort(function(a,b){ return compare(a,b,sort.value); }).forEach(function(row){ tbody.appendChild(row); });
+            if(emptyRow) tbody.appendChild(emptyRow);
+          }
+          if(emptyRow) emptyRow.style.display = visible.length ? 'none' : '';
+          if(counter) counter.textContent = visible.length + ' von ' + rows.length;
+        }
+        if(search) search.addEventListener('input', apply);
+        filters.forEach(function(filter){ filter.addEventListener('change', apply); });
+        if(sort) sort.addEventListener('change', apply);
+        apply();
+      });
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

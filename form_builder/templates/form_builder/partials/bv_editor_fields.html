@@ -1,0 +1,48 @@
+{% load static %}
+<div class="bv-editor-grid">
+  <div class="bv-form-card span-4"><label for="{{ entry_form.datum.id_for_label }}">1. Datum{% if entry_form.datum.field.required %}<span>*</span>{% endif %}</label>{{ entry_form.datum }}{% for error in entry_form.datum.errors %}<small class="error">{{ error }}</small>{% endfor %}</div>
+  <div class="bv-form-card span-7"><label for="{{ entry_form.einrichtung.id_for_label }}">2. Einrichtung{% if entry_form.einrichtung.field.required %}<span>*</span>{% endif %}</label>{{ entry_form.einrichtung }}{% for error in entry_form.einrichtung.errors %}<small class="error">{{ error }}</small>{% endfor %}</div>
+  <div class="bv-form-card span-4"><label for="{{ entry_form.lfd_nr.id_for_label }}">3. LfdNr.</label>{{ entry_form.lfd_nr }}{% for error in entry_form.lfd_nr.errors %}<small class="error">{{ error }}</small>{% endfor %}</div>
+  <div class="bv-form-card span-9"><label for="{{ entry_form.meldender.id_for_label }}">4. Meldender (Name/Position){% if entry_form.meldender.field.required %}<span>*</span>{% endif %}</label>{{ entry_form.meldender }}{% for error in entry_form.meldender.errors %}<small class="error">{{ error }}</small>{% endfor %}</div>
+
+  <div class="bv-section span-24">
+    <div class="bv-section-title">5. Art des Vorfalls</div>
+    <div class="bv-triple">{{ entry_form.art_vorfall_1 }}{{ entry_form.art_vorfall_2 }}{{ entry_form.art_vorfall_3 }}</div>
+    <div class="bv-inline-check"><label>{{ entry_form.sonstiges }} Sonstiges</label>{{ entry_form.sonstiges_text }}</div>
+  </div>
+
+  <div class="bv-section span-24">
+    <div class="bv-timeline-head">
+      <div>6. Zeitliche Abfolge</div>
+      <div>6.1 Sachverhalt und Maßnahmen{% if entry_form.sachverhalt.field.required %}<span>*</span>{% endif %}</div>
+    </div>
+    <div class="bv-timeline">
+      <div class="bv-times">
+        {{ entry_form.zeit1 }}{{ entry_form.zeit2 }}{{ entry_form.zeit3 }}{{ entry_form.zeit4 }}{{ entry_form.zeit5 }}{{ entry_form.zeit6 }}{{ entry_form.zeit7 }}{{ entry_form.zeit8 }}
+      </div>
+      <div class="bv-facts">{{ entry_form.sachverhalt }}{% if entry_form.sachverhalt.help_text %}<small>{{ entry_form.sachverhalt.help_text }}</small>{% endif %}{% for error in entry_form.sachverhalt.errors %}<small class="error">{{ error }}</small>{% endfor %}</div>
+    </div>
+  </div>
+
+  <div class="bv-section span-24">
+    <div class="bv-section-title">7. Beteiligte Personen</div>
+    <div class="bv-person-row"><label for="{{ entry_form.taeter.id_for_label }}">7.1 Täter</label>{{ entry_form.taeter }}</div>
+    <div class="bv-person-row"><label for="{{ entry_form.geschaedigte.id_for_label }}">7.2 Geschädigte</label>{{ entry_form.geschaedigte }}</div>
+    <div class="bv-person-row"><label for="{{ entry_form.zeugen.id_for_label }}">7.3 Zeugen</label>{{ entry_form.zeugen }}</div>
+  </div>
+
+  <div class="bv-section span-24">
+    <div class="bv-section-title">8. Einsatz von</div>
+    <div class="bv-triple">{{ entry_form.einsatz_1 }}{{ entry_form.einsatz_2 }}{{ entry_form.einsatz_3 }}</div>
+  </div>
+
+  <div class="bv-section span-24">
+    <div class="bv-section-title">9. Wer wurde informiert</div>
+    <div class="bv-triple">{{ entry_form.info_1 }}{{ entry_form.info_2 }}{{ entry_form.info_3 }}</div>
+  </div>
+
+  <div class="bv-section span-24">
+    <div class="bv-section-title">10. Vorgang{% if entry_form.vorgang.field.required %}<span>*</span>{% endif %}</div>
+    {{ entry_form.vorgang }}
+  </div>
+</div>

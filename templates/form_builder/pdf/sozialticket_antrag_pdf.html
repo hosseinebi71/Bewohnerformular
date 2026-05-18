@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { size: A4 landscape; margin: 9mm 8mm 8mm 8mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111827; font-size: 8.5pt; }
+    .sheet { width: 100%; }
+    .topline { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5mm; }
+    .brand { font-size: 7pt; color: #6b7280; letter-spacing: .08em; text-transform: uppercase; }
+    .doc-meta { text-align: right; font-size: 7pt; color: #6b7280; line-height: 1.35; }
+    h1 { text-align: center; margin: 0 0 5mm 0; font-size: 17pt; line-height: 1; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1.2pt solid #111827; }
+    th, td { border: .85pt solid #111827; padding: 0 2.2mm; height: 8.1mm; vertical-align: middle; }
+    th { background: #eef2f7; font-weight: 700; text-align: center; height: 11mm; }
+    td { font-size: 8.2pt; }
+    .col-datum { width: 18mm; }
+    .col-dias { width: 17mm; }
+    .col-pkz { width: 24mm; }
+    .col-name { width: 42mm; }
+    .col-vorname { width: 36mm; }
+    .col-geb { width: 23mm; }
+    .col-geschlecht { width: 26mm; }
+    .col-grund { width: 32mm; }
+    .grund-head { color: #b42318; }
+    .grund-cell { color: #111827; text-align: left; }
+    .value { min-height: 7mm; display: block; white-space: nowrap; overflow: hidden; }
+    .footer { margin-top: 4mm; display:flex; justify-content:space-between; color:#6b7280; font-size:6.8pt; }
+  </style>
+</head>
+<body>
+  <section class="sheet">
+    <div class="topline">
+      <div class="brand">{{ company_name }}</div>
+      <div class="doc-meta">
+        Vorschau / Arbeitsdokument<br>
+        {{ generated_at|date:"d.m.Y H:i" }}{% if generated_by %} · {{ generated_by }}{% endif %}
+      </div>
+    </div>
+    <h1>Sozialticket Antrag</h1>
+    <table aria-label="Sozialticket Antrag">
+      <thead>
+        <tr>
+          <th class="col-datum">Datum</th>
+          <th class="col-dias">Dias</th>
+          <th class="col-pkz">PKZ</th>
+          <th class="col-name">Name</th>
+          <th class="col-vorname">Vorname</th>
+          <th class="col-geb">geb. am</th>
+          <th class="col-geschlecht">Geschlecht</th>
+          <th class="col-grund grund-head">Grund</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in sozialticket_rows %}
+        <tr>
+          <td><span class="value">{{ row.datum }}</span></td>
+          <td><span class="value">{{ row.dias }}</span></td>
+          <td><span class="value">{{ row.pkz }}</span></td>
+          <td><span class="value">{{ row.name }}</span></td>
+          <td><span class="value">{{ row.vorname }}</span></td>
+          <td><span class="value">{{ row.geb_am }}</span></td>
+          <td><span class="value">{{ row.geschlecht }}</span></td>
+          <td class="grund-cell"><span class="value">{{ row.grund }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="footer">
+      <span>{{ form_entry.form.title }} · {{ form_entry.public_id }}</span>
+      <span>PDF-Vorschau mit Druck- und Download-Funktion im Browser</span>
+    </div>
+  </section>
+</body>
+</html>

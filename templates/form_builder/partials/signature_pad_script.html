@@ -1,0 +1,95 @@
+<script>
+(function(){
+  const pads = document.querySelectorAll('input.signature-value[data-signature-field="1"]');
+  if(!pads.length) return;
+
+  function setup(input){
+    const row = input.closest('.field-row') || input.parentElement;
+    if(!row || row.dataset.signatureReady === '1') return;
+    row.dataset.signatureReady = '1';
+    row.classList.add('signature-row');
+
+    const wrap = document.createElement('div');
+    wrap.className = 'signature-pad';
+    wrap.innerHTML = '<canvas></canvas><div class="signature-pad__actions"><button type="button" class="button ghost compact" data-clear>Unterschrift löschen</button><span>Mit Maus, Finger oder Stift unterschreiben</span></div>';
+    row.appendChild(wrap);
+
+    const canvas = wrap.querySelector('canvas');
+    const clear = wrap.querySelector('[data-clear]');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let dirty = Boolean(input.value);
+
+    function size(){
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      const width = Math.max(wrap.clientWidth, 280);
+      const height = 130;
+      canvas.width = width * ratio;
+      canvas.height = height * ratio;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#0f172a';
+      if(input.value){
+        const image = new Image();
+        image.onload = function(){ ctx.drawImage(image, 0, 0, width, height); };
+        image.src = input.value;
+      }
+    }
+
+    function pos(event){
+      const rect = canvas.getBoundingClientRect();
+      const point = event.touches ? event.touches[0] : event;
+      return {x: point.clientX - rect.left, y: point.clientY - rect.top};
+    }
+
+    function start(event){
+      event.preventDefault();
+      drawing = true;
+      dirty = true;
+      const p = pos(event);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+    }
+
+    function move(event){
+      if(!drawing) return;
+      event.preventDefault();
+      const p = pos(event);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
+
+    function end(){
+      if(!drawing) return;
+      drawing = false;
+      if(dirty){
+        input.value = canvas.toDataURL('image/png');
+        input.dispatchEvent(new Event('input', {bubbles:true}));
+        input.dispatchEvent(new Event('change', {bubbles:true}));
+      }
+    }
+
+    clear.addEventListener('click', function(){
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      dirty = false;
+      input.value = '';
+      input.dispatchEvent(new Event('input', {bubbles:true}));
+      input.dispatchEvent(new Event('change', {bubbles:true}));
+    });
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', start, {passive:false});
+    canvas.addEventListener('touchmove', move, {passive:false});
+    canvas.addEventListener('touchend', end);
+    window.addEventListener('resize', size);
+    size();
+  }
+
+  pads.forEach(setup);
+})();
+</script>
