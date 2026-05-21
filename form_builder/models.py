@@ -253,6 +253,36 @@ class Form(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
             self.save()
 
     def build_schema(self) -> dict:
+        sections: list[dict] = []
+        flat_fields: list[dict] = []
+
+        active_sections = self.sections.filter(is_active=True).order_by("position", "title")
+        for section in active_sections:
+            section_fields = [
+                field.as_builder_dict()
+                for field in section.fields.filter(is_active=True).order_by("position", "key")
+            ]
+            sections.append(
+                {
+                    "id": str(section.id),
+                    "title": section.title,
+                    "description": section.description,
+                    "position": section.position,
+                    "is_collapsible": section.is_collapsible,
+                    "field_keys": [field["key"] for field in section_fields],
+                    "fields": section_fields,
+                }
+            )
+            flat_fields.extend(section_fields)
+
+        unsectioned_fields = [
+            field.as_builder_dict()
+            for field in self.fields.filter(is_active=True, section__isnull=True).order_by(
+                "position", "key"
+            )
+        ]
+        flat_fields.extend(unsectioned_fields)
+
         return {
             "form": {
                 "id": str(self.id),
@@ -264,10 +294,8 @@ class Form(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
                 "is_archivable": self.is_archivable,
                 "retention_period_days": self.retention_period_days,
             },
-            "fields": [
-                field.as_builder_dict()
-                for field in self.fields.filter(is_active=True).order_by("position", "key")
-            ],
+            "sections": sections,
+            "fields": flat_fields,
         }
 
     def clean(self) -> None:
@@ -313,6 +341,45 @@ class Form(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
         return f"{self.title} v{self.version}"
 
 
+class FormSection(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
+    """Logical grouping for long administrative forms."""
+
+    form = models.ForeignKey(
+        Form,
+        on_delete=models.CASCADE,
+        related_name="sections",
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(
+        blank=True,
+        help_text="Beschreibung oder Hilfetext fuer diesen Formularabschnitt.",
+    )
+    position = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)],
+        help_text="Technische Reihenfolge innerhalb des Formulars.",
+    )
+    is_collapsible = models.BooleanField(
+        default=False,
+        help_text="Wenn aktiv, kann der Abschnitt in der Oberflaeche einklappbar dargestellt werden.",
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["form", "position", "title"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["form", "position"],
+                name="uniq_form_section_position_per_form",
+            ),
+        ]
+        indexes = [models.Index(fields=["form", "is_active"])]
+        verbose_name = "Formularabschnitt"
+        verbose_name_plural = "Formularabschnitte"
+
+    def __str__(self) -> str:
+        return f"{self.form.key} - {self.title}"
+
+
 class Field(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
     class FieldType(models.TextChoices):
         TEXT = "text", "Text"
@@ -344,6 +411,14 @@ class Field(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
         Form,
         on_delete=models.PROTECT,
         related_name="fields",
+    )
+    section = models.ForeignKey(
+        FormSection,
+        on_delete=models.SET_NULL,
+        related_name="fields",
+        null=True,
+        blank=True,
+        help_text="Optionaler Formularabschnitt. Leer bedeutet: globales Feld ohne Abschnitt.",
     )
     key = models.SlugField(max_length=80)
     label = models.CharField(max_length=255)
@@ -393,6 +468,7 @@ class Field(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
         ]
         indexes = [
             models.Index(fields=["form", "is_active"]),
+            models.Index(fields=["section", "is_active"]),
             models.Index(fields=["field_type", "sensitivity"]),
         ]
         verbose_name = "Formularfeld"
@@ -400,6 +476,9 @@ class Field(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
 
     def clean(self) -> None:
         errors = {}
+
+        if self.section_id and self.form_id and self.section.form_id != self.form_id:
+            errors["section"] = "Der Formularabschnitt gehoert nicht zu diesem Formular."
 
         if self.field_type in self.CHOICE_FIELD_TYPES:
             if not isinstance(self.choices, list) or not self.choices:
@@ -438,6 +517,7 @@ class Field(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
         return {
             "id": str(self.id),
             "key": self.key,
+            "section_id": str(self.section_id) if self.section_id else None,
             "label": self.label,
             "help_text": self.help_text,
             "field_type": self.field_type,

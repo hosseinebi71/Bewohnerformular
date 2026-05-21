@@ -1,0 +1,42 @@
+{% if entry_form.sectioned_bound_field_groups %}
+  {% for group in entry_form.sectioned_bound_field_groups %}
+    {% if group.section %}
+      <fieldset class="form-section{% if group.section.is_collapsible %} is-collapsible{% endif %}"{% if group.section.is_collapsible %} data-collapsible="true"{% endif %}>
+        <legend class="form-section-title">{{ group.section.title }}</legend>
+        {% if group.section.description %}<p class="form-section-description">{{ group.section.description }}</p>{% endif %}
+        <div class="form-grid government-form section-fields">
+          {% for field in group.fields %}
+            <div class="field-row">
+              <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span>*</span>{% endif %}</label>
+              {{ field }}
+              {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+              {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+      </fieldset>
+    {% else %}
+      <div class="form-grid government-form">
+        {% for field in group.fields %}
+          <div class="field-row">
+            <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span>*</span>{% endif %}</label>
+            {{ field }}
+            {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+            {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+{% else %}
+  <div class="form-grid government-form">
+    {% for field in entry_form %}
+      <div class="field-row">
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span>*</span>{% endif %}</label>
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

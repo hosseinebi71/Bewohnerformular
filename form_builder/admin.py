@@ -10,6 +10,7 @@ from .models import (
     FormEntry,
     FormRecipient,
     FormSchedule,
+    FormSection,
     OutboxItem,
     PDFDocument,
     SentFormArchive,
@@ -51,10 +52,37 @@ class PublishedFormReadOnlyMixin:
         return super().has_delete_permission(request, obj)
 
 
+class FormSectionInline(admin.TabularInline):
+    model = FormSection
+    extra = 0
+    fields = ("position", "title", "description", "is_collapsible", "is_active")
+    ordering = ("position", "title")
+    show_change_link = True
+
+    def _is_published(self, obj):
+        return bool(obj and obj.pk and obj.status == Form.PublicationStatus.PUBLISHED)
+
+    def has_add_permission(self, request, obj=None):
+        if self._is_published(obj):
+            return False
+        return super().has_add_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if self._is_published(obj):
+            return False
+        return super().has_delete_permission(request, obj)
+
+    def has_change_permission(self, request, obj=None):
+        if self._is_published(obj):
+            return request.method in ("GET", "HEAD", "OPTIONS")
+        return super().has_change_permission(request, obj)
+
+
 class FieldInline(admin.TabularInline):
     model = Field
     extra = 0
     fields = (
+        "section",
         "position",
         "key",
         "label",
@@ -63,7 +91,7 @@ class FieldInline(admin.TabularInline):
         "sensitivity",
         "is_active",
     )
-    ordering = ("position", "key")
+    ordering = ("section__position", "position", "key")
     show_change_link = True
 
     def _is_published(self, obj):
@@ -149,7 +177,7 @@ class FormAdmin(UserStampedAdminMixin, admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-    inlines = (FieldInline,)
+    inlines = (FormSectionInline, FieldInline)
     actions = ("publish_selected_forms",)
 
     @admin.action(description="Ausgewaehlte Formulare veroeffentlichen")
@@ -199,6 +227,50 @@ class FormAdmin(UserStampedAdminMixin, admin.ModelAdmin):
         form.instance.sync_schema()
 
 
+@admin.register(FormSection)
+class FormSectionAdmin(PublishedFormReadOnlyMixin, UserStampedAdminMixin, admin.ModelAdmin):
+    list_display = ("title", "form", "position", "is_collapsible", "is_active", "updated_at")
+    list_filter = ("form", "is_collapsible", "is_active")
+    search_fields = ("title", "description", "form__title", "form__key")
+    readonly_fields = ("id", "created_at", "updated_at")
+    autocomplete_fields = ("form",)
+    fields = (
+        "id",
+        "form",
+        "position",
+        "title",
+        "description",
+        "is_collapsible",
+        "is_active",
+        "created_at",
+        "updated_at",
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly_fields = list(super().get_readonly_fields(request, obj))
+        if obj and self._is_published_form_object(obj):
+            readonly_fields.extend(
+                [
+                    "form",
+                    "position",
+                    "title",
+                    "description",
+                    "is_collapsible",
+                    "is_active",
+                ]
+            )
+        return readonly_fields
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        obj.form.sync_schema()
+
+    def delete_model(self, request, obj):
+        form = obj.form
+        super().delete_model(request, obj)
+        form.sync_schema()
+
+
 @admin.register(Field)
 class FieldAdmin(PublishedFormReadOnlyMixin, UserStampedAdminMixin, admin.ModelAdmin):
     list_display = (
@@ -211,13 +283,14 @@ class FieldAdmin(PublishedFormReadOnlyMixin, UserStampedAdminMixin, admin.ModelA
         "is_active",
         "updated_at",
     )
-    list_filter = ("field_type", "required", "sensitivity", "is_active")
+    list_filter = ("form", "section", "field_type", "required", "sensitivity", "is_active")
     search_fields = ("label", "key", "form__title", "form__key")
     readonly_fields = ("id", "created_at", "updated_at")
-    autocomplete_fields = ("form",)
+    autocomplete_fields = ("form", "section")
     fields = (
         "id",
         "form",
+        "section",
         "position",
         "key",
         "label",
@@ -241,6 +314,7 @@ class FieldAdmin(PublishedFormReadOnlyMixin, UserStampedAdminMixin, admin.ModelA
             readonly_fields.extend(
                 [
                     "form",
+                    "section",
                     "position",
                     "key",
                     "label",
@@ -257,6 +331,15 @@ class FieldAdmin(PublishedFormReadOnlyMixin, UserStampedAdminMixin, admin.ModelA
                 ]
             )
         return readonly_fields
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        obj.form.sync_schema()
+
+    def delete_model(self, request, obj):
+        form = obj.form
+        super().delete_model(request, obj)
+        form.sync_schema()
 
 
 @admin.register(FormRecipient)

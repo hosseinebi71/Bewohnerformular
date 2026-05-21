@@ -59,6 +59,33 @@ class DynamicEntryForm(forms.Form):
         for field_definition in schema.get("fields", []):
             self.fields[field_definition["key"]] = build_form_field(field_definition)
 
+    @property
+    def sectioned_bound_field_groups(self) -> list[dict]:
+        """Return BoundFields grouped by schema sections while preserving flat fallback."""
+        sections = self.schema.get("sections") or []
+        grouped_keys: set[str] = set()
+        groups: list[dict] = []
+
+        for section in sections:
+            section_keys = section.get("field_keys") or [
+                field_definition.get("key")
+                for field_definition in section.get("fields", [])
+                if field_definition.get("key")
+            ]
+            bound_fields = []
+            for key in section_keys:
+                if key in self.fields:
+                    bound_fields.append(self[key])
+                    grouped_keys.add(key)
+            if bound_fields:
+                groups.append({"section": section, "fields": bound_fields})
+
+        unsectioned_fields = [field for field in self if field.name not in grouped_keys]
+        if unsectioned_fields:
+            groups.append({"section": None, "fields": unsectioned_fields})
+
+        return groups
+
 
 def get_form_schema(form_definition: Form) -> dict:
     schema = deepcopy(form_definition.schema or {})

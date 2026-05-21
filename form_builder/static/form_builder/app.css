@@ -1242,3 +1242,35 @@ button.button {
     padding: 26px;
   }
 }
+
+/* v17: dynamic form sections */
+.form-section {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+.form-section-title {
+  width: 100%;
+  padding: 16px 22px 6px;
+  color: #0b1f3a;
+  font-size: 16px;
+  font-weight: 950;
+}
+.form-section-description {
+  margin: 0;
+  padding: 0 22px 14px;
+  color: var(--muted);
+}
+.form-section.is-collapsible .form-section-title::after {
+  content: " einklappbar";
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.section-fields {
+  border-top: 1px solid #edf2f7;
+}
