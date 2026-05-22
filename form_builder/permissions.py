@@ -281,3 +281,86 @@ def can_view_archive_record(user, archive_record) -> bool:
     if not archive_record or not can_view_archive(user):
         return False
     return can_view_entry(user, getattr(archive_record, "form_entry", None))
+
+
+# Prompt 11 hardening helpers. Keep these lightweight and object based so new
+# import/template/reporting modules can reuse the same scope rules instead of
+# relying on template hiding.
+
+
+def can_view_attachment(user, attachment) -> bool:
+    if not attachment:
+        return False
+    return can_view_entry(user, getattr(attachment, "entry", None))
+
+
+def can_delete_attachment(user, attachment) -> bool:
+    if not attachment:
+        return False
+    return can_edit_entry(user, getattr(attachment, "entry", None))
+
+
+def can_export_entries(user) -> bool:
+    # Exports are bulk data access. Viewers may see dashboards/forms but should
+    # not receive bulk downloads unless they also have staff/admin scope.
+    return bool(_is_authenticated(user) and (is_admin(user) or is_staff_user(user)))
+
+
+def can_download_reports(user) -> bool:
+    return can_export_entries(user)
+
+
+def can_manage_import_jobs(user) -> bool:
+    return can_manage_settings(user)
+
+
+def can_view_import_job(user, import_job) -> bool:
+    if not import_job:
+        return False
+    if can_manage_settings(user):
+        return True
+    return bool(_is_owner_or_editor(user, import_job) and can_view_settings(user))
+
+
+def can_manage_templates(user) -> bool:
+    return can_manage_settings(user)
+
+
+def can_view_template(user, template) -> bool:
+    if not template:
+        return False
+    form = getattr(template, "form", None)
+    return can_view_settings(user) and (form is None or can_view_form(user, form))
+
+
+def can_manage_template(user, template=None) -> bool:
+    if not can_manage_templates(user):
+        return False
+    if template is None:
+        return True
+    form = getattr(template, "form", None)
+    return form is None or can_view_form(user, form)
+
+
+def can_view_action_item(user, action_item) -> bool:
+    if not action_item:
+        return False
+    return can_view_entry(user, getattr(action_item, "source_entry", None))
+
+
+def can_update_action_item(user, action_item) -> bool:
+    if not action_item:
+        return False
+    if can_manage_settings(user):
+        return True
+    assigned_to_id = getattr(action_item, "assigned_to_id", None)
+    return bool(
+        assigned_to_id
+        and assigned_to_id == getattr(user, "pk", None)
+        and can_view_action_item(user, action_item)
+    )
+
+
+def can_apply_retention_policy(user) -> bool:
+    # Retention changes data state permanently, so keep it admin/settings-manager only.
+    return can_manage_settings(user)

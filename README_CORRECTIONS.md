@@ -1,19 +1,25 @@
-# Prompt 10 CSS contract correction
+# Prompt 11 retention correction
 
-The frontend CSS contract test reads `static/form_builder/app.css` and found Prompt 10 classes in templates that were only defined in the new mobile CSS layer.
+This correction fixes retention candidate discovery across SQLite/PostgreSQL.
 
-This correction appends the missing class definitions to `app.css` without overwriting the existing stylesheet.
+## Problem
 
-Apply from the project root:
+The original service used a nested JSON `exclude(archive_metadata__retention__status="processed")` filter. On SQLite, missing JSON paths can behave differently from PostgreSQL and caused due archive rows to be excluded in tests.
+
+## Fix
+
+The service now:
+
+- filters due archives in SQL only by `retention_until <= as_of`,
+- checks `archive_metadata.retention.status == "processed"` in Python,
+- keeps dry-run write-free,
+- preserves the same anonymization and audit behavior for `--apply`.
+
+## Verify
 
 ```powershell
-.\tools\apply_prompt10_css_contract_fix.ps1
+poetry run python manage.py check
 poetry run python manage.py test form_builder
 poetry run pre-commit run --all-files
-```
-
-If PowerShell blocks the script, run:
-
-```powershell
-Get-Content .\static\form_builder\prompt10_css_contract_append.css | Add-Content .\static\form_builder\app.css
+poetry run python manage.py apply_retention_policy --dry-run
 ```

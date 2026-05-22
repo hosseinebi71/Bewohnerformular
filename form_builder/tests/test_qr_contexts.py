@@ -73,6 +73,8 @@ class QRContextTests(TestCase):
             updated_by=self.user,
         )
         self.client.force_login(self.user)
-        response = self.client.get(reverse("form_builder:qr_context_open", kwargs={"token": context.token}))
+        response = self.client.get(
+            reverse("form_builder:qr_context_open", kwargs={"token": context.token})
+        )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(FormEntry.objects.filter(form=self.form).count(), 1)

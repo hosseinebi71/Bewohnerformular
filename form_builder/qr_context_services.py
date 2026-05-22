@@ -9,7 +9,6 @@ from django.utils import timezone
 from .models import AuditLog, FormEntry
 from .qr_context_models import QRFormContext
 
-
 SAFE_CONTEXT_FIELD_KEYS = {
     "room_label",
     "zimmer",

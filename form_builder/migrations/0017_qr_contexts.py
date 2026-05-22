@@ -21,7 +21,12 @@ class Migration(migrations.Migration):
             fields=[
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
+                ),
                 ("label", models.CharField(max_length=255)),
                 (
                     "token",
@@ -34,15 +39,27 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "context_type",
-                    models.CharField(blank=True, help_text="Optionaler Kontexttyp, z. B. room, location, asset oder resident.", max_length=40),
+                    models.CharField(
+                        blank=True,
+                        help_text="Optionaler Kontexttyp, z. B. room, location, asset oder resident.",
+                        max_length=40,
+                    ),
                 ),
                 (
                     "context_key",
-                    models.SlugField(blank=True, help_text="Stabiler nicht sensibler Kontextschluessel, z. B. kueche-1 oder raum-a-12.", max_length=120),
+                    models.SlugField(
+                        blank=True,
+                        help_text="Stabiler nicht sensibler Kontextschluessel, z. B. kueche-1 oder raum-a-12.",
+                        max_length=120,
+                    ),
                 ),
                 (
                     "context_payload",
-                    models.JSONField(blank=True, default=dict, help_text="Nicht sensible Vorbelegungen fuer Formularfelder."),
+                    models.JSONField(
+                        blank=True,
+                        default=dict,
+                        help_text="Nicht sensible Vorbelegungen fuer Formularfelder.",
+                    ),
                 ),
                 ("is_active", models.BooleanField(db_index=True, default=True)),
                 ("expires_at", models.DateTimeField(blank=True, db_index=True, null=True)),
@@ -50,19 +67,41 @@ class Migration(migrations.Migration):
                 ("usage_count", models.PositiveIntegerField(default=0)),
                 (
                     "bewohner",
-                    models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name="qr_contexts", to="form_builder.bewohner"),
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="qr_contexts",
+                        to="form_builder.bewohner",
+                    ),
                 ),
                 (
                     "created_by",
-                    models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="form_builder_qrformcontext_created", to=settings.AUTH_USER_MODEL),
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="form_builder_qrformcontext_created",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
                 ),
                 (
                     "form",
-                    models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="qr_contexts", to="form_builder.form"),
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="qr_contexts",
+                        to="form_builder.form",
+                    ),
                 ),
                 (
                     "updated_by",
-                    models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="form_builder_qrformcontext_updated", to=settings.AUTH_USER_MODEL),
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="form_builder_qrformcontext_updated",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
                 ),
             ],
             options={
@@ -77,10 +116,14 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="qrformcontext",
-            index=models.Index(fields=["expires_at", "is_active"], name="form_builde_expires_d2a9b9_idx"),
+            index=models.Index(
+                fields=["expires_at", "is_active"], name="form_builde_expires_d2a9b9_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="qrformcontext",
-            index=models.Index(fields=["context_type", "context_key"], name="form_builde_context_16f81f_idx"),
+            index=models.Index(
+                fields=["context_type", "context_key"], name="form_builde_context_16f81f_idx"
+            ),
         ),
     ]

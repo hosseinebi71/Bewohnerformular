@@ -60,7 +60,9 @@ def qr_context_create_view(request):
 @login_required(login_url="login")
 def qr_context_detail_view(request, context_id):
     require_permission(can_view_settings(request.user))
-    context = get_object_or_404(QRFormContext.objects.select_related("form", "bewohner"), pk=context_id)
+    context = get_object_or_404(
+        QRFormContext.objects.select_related("form", "bewohner"), pk=context_id
+    )
     open_url = build_qr_open_url(request, context)
     return render(
         request,
@@ -102,7 +104,9 @@ def qr_context_deactivate_view(request, context_id):
 def qr_context_open_view(request, token):
     if not can_create_entries(request.user):
         raise PermissionDenied
-    context = get_object_or_404(QRFormContext.objects.select_related("form", "bewohner"), token=token)
+    context = get_object_or_404(
+        QRFormContext.objects.select_related("form", "bewohner"), token=token
+    )
     entry = create_entry_from_qr_context(context=context, user=request.user)
     messages.success(request, "QR-Kontext wurde geoeffnet. Bitte Angaben pruefen und speichern.")
     return redirect("form_builder:entry_edit", entry_id=entry.pk)
