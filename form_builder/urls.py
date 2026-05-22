@@ -1,6 +1,12 @@
 from django.urls import path
 
 from .attachment_views import attachment_delete_view, attachment_download_view
+from .conditional_builder_views import (
+    conditional_rule_create_view,
+    conditional_rule_delete_view,
+    conditional_rule_edit_view,
+    conditional_rule_list_view,
+)
 from .repeatable_builder_views import (
     repeatable_column_create_view,
     repeatable_column_delete_view,
@@ -134,6 +140,26 @@ urlpatterns = [
         "einstellungen/form-builder/<uuid:form_id>/bearbeiten/",
         form_builder_edit_view,
         name="form_builder_edit",
+    ),
+    path(
+        "einstellungen/form-builder/<uuid:form_id>/regeln/",
+        conditional_rule_list_view,
+        name="conditional_rule_list",
+    ),
+    path(
+        "einstellungen/form-builder/<uuid:form_id>/regeln/neu/",
+        conditional_rule_create_view,
+        name="conditional_rule_create",
+    ),
+    path(
+        "einstellungen/form-builder/regeln/<uuid:rule_id>/bearbeiten/",
+        conditional_rule_edit_view,
+        name="conditional_rule_edit",
+    ),
+    path(
+        "einstellungen/form-builder/regeln/<uuid:rule_id>/loeschen/",
+        conditional_rule_delete_view,
+        name="conditional_rule_delete",
     ),
     path(
         "einstellungen/form-builder/<uuid:form_id>/abschnitte/neu/",

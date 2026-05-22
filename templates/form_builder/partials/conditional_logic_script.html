@@ -1,0 +1,81 @@
+<script>
+(function(){
+  const dataEl = document.getElementById('conditional-rules-data');
+  if(!dataEl) return;
+  let rules = [];
+  try { rules = JSON.parse(dataEl.textContent || '[]'); } catch(e) { rules = []; }
+  if(!rules.length) return;
+
+  function valuesFor(name){
+    const inputs = Array.from(document.querySelectorAll('[name="' + CSS.escape(name) + '"]'));
+    if(!inputs.length) return '';
+    if(inputs.length > 1){
+      const checked = inputs.filter(i => i.checked).map(i => i.value || 'true');
+      return checked.length ? checked : '';
+    }
+    const input = inputs[0];
+    if(input.type === 'checkbox') return input.checked ? (input.value || 'true') : '';
+    return input.value || '';
+  }
+
+  function normalize(value){
+    if(Array.isArray(value)) return value.map(String);
+    if(value === true) return 'true';
+    if(value === false || value === null || value === undefined) return '';
+    return String(value);
+  }
+
+  function matches(rule){
+    const value = normalize(valuesFor(rule.source));
+    if(rule.operator === 'is_empty') return value === '' || (Array.isArray(value) && !value.length);
+    if(rule.operator === 'is_not_empty') return !(value === '' || (Array.isArray(value) && !value.length));
+    if(Array.isArray(value)){
+      const found = value.indexOf(String(rule.value)) !== -1;
+      return rule.operator === 'not_equals' ? !found : found;
+    }
+    const same = value === String(rule.value);
+    return rule.operator === 'not_equals' ? !same : same;
+  }
+
+  function targetElements(rule){
+    if(rule.target_kind === 'section'){
+      return Array.from(document.querySelectorAll('[data-section-id="' + CSS.escape(rule.target) + '"]'));
+    }
+    return Array.from(document.querySelectorAll('[data-field-key="' + CSS.escape(rule.target) + '"]'));
+  }
+
+  function setRequired(row, required){
+    row.querySelectorAll('input, select, textarea').forEach(function(input){
+      if(input.type === 'hidden') return;
+      if(required){
+        input.dataset.conditionalRequired = '1';
+        input.setAttribute('aria-required', 'true');
+      } else if(input.dataset.conditionalRequired === '1') {
+        input.removeAttribute('aria-required');
+        delete input.dataset.conditionalRequired;
+      }
+    });
+    row.classList.toggle('conditional-required', required);
+  }
+
+  function apply(){
+    rules.forEach(function(rule){
+      const active = matches(rule);
+      targetElements(rule).forEach(function(el){
+        if(rule.action === 'show') el.hidden = !active;
+        if(rule.action === 'hide') el.hidden = active;
+        if(rule.action === 'require') setRequired(el, active);
+      });
+    });
+  }
+
+  const sourceNames = Array.from(new Set(rules.map(r => r.source)));
+  sourceNames.forEach(function(name){
+    document.querySelectorAll('[name="' + CSS.escape(name) + '"]').forEach(function(input){
+      input.addEventListener('change', apply);
+      input.addEventListener('input', apply);
+    });
+  });
+  apply();
+})();
+</script>

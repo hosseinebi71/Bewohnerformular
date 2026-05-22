@@ -1,0 +1,53 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Formular-Builder</p>
+      <h2>Bedingte Regeln</h2>
+      <p>{{ form_definition.title }} v{{ form_definition.version }}</p>
+    </div>
+    <div class="title-actions">
+      <a class="button ghost" href="{% url 'form_builder:form_builder_edit' form_definition.id %}">Zurück zum Formular</a>
+      {% if not is_locked %}<a class="button" href="{% url 'form_builder:conditional_rule_create' form_definition.id %}">Regel anlegen</a>{% endif %}
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Quelle</th>
+          <th>Bedingung</th>
+          <th>Aktion</th>
+          <th>Ziel</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rule in rules %}
+          <tr>
+            <td>{{ rule.source_field.label }}<br><small>{{ rule.source_field.key }}</small></td>
+            <td>{{ rule.get_operator_display }}{% if rule.value %}: <strong>{{ rule.value }}</strong>{% endif %}</td>
+            <td>{{ rule.get_action_display }}</td>
+            <td>{% if rule.target_field %}Feld: {{ rule.target_field.label }}{% else %}Abschnitt: {{ rule.target_section.title }}{% endif %}</td>
+            <td>{% if rule.is_active %}<span class="badge">Aktiv</span>{% else %}<span class="badge muted">Inaktiv</span>{% endif %}</td>
+            <td class="table-actions">
+              {% if not is_locked %}
+                <a class="link" href="{% url 'form_builder:conditional_rule_edit' rule.id %}">Bearbeiten</a>
+                <form method="post" action="{% url 'form_builder:conditional_rule_delete' rule.id %}" style="display:inline" onsubmit="return confirm('Regel löschen?');">
+                  {% csrf_token %}
+                  <button class="link danger" type="submit">Löschen</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">Noch keine bedingten Regeln definiert.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

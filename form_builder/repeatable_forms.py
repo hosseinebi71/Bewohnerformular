@@ -2,14 +2,23 @@ from __future__ import annotations
 
 from django import forms
 
-from .models import Field, Form, FormSection
+from .models import Form, FormSection
 from .repeatable_models import RepeatableGroup, RepeatableGroupColumn
 
 
 class RepeatableGroupBuilderForm(forms.ModelForm):
     class Meta:
         model = RepeatableGroup
-        fields = ("section", "position", "key", "title", "description", "min_rows", "max_rows", "is_active")
+        fields = (
+            "section",
+            "position",
+            "key",
+            "title",
+            "description",
+            "min_rows",
+            "max_rows",
+            "is_active",
+        )
         labels = {
             "section": "Abschnitt",
             "position": "Reihenfolge",
@@ -25,10 +34,18 @@ class RepeatableGroupBuilderForm(forms.ModelForm):
     def __init__(self, *args, form_definition: Form, **kwargs):
         self.form_definition = form_definition
         super().__init__(*args, **kwargs)
-        self.fields["section"].queryset = FormSection.objects.filter(form=form_definition).order_by("position", "title")
+        self.fields["section"].queryset = FormSection.objects.filter(form=form_definition).order_by(
+            "position", "title"
+        )
         self.fields["section"].required = False
         if not self.instance.pk:
-            last = RepeatableGroup.objects.filter(form=form_definition).order_by("-position").values_list("position", flat=True).first() or 0
+            last = (
+                RepeatableGroup.objects.filter(form=form_definition)
+                .order_by("-position")
+                .values_list("position", flat=True)
+                .first()
+                or 0
+            )
             self.fields["position"].initial = last + 1
             self.fields["min_rows"].initial = 0
             self.fields["max_rows"].initial = 10
@@ -85,7 +102,9 @@ class RepeatableColumnBuilderForm(forms.ModelForm):
         self.group = group
         super().__init__(*args, **kwargs)
         if not self.instance.pk:
-            last = group.columns.order_by("-position").values_list("position", flat=True).first() or 0
+            last = (
+                group.columns.order_by("-position").values_list("position", flat=True).first() or 0
+            )
             self.fields["position"].initial = last + 1
             self.fields["is_active"].initial = True
         else:
@@ -117,7 +136,9 @@ class RepeatableColumnBuilderForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("column_type") == RepeatableGroupColumn.ColumnType.SELECT and not cleaned.get("choices_text"):
+        if cleaned.get(
+            "column_type"
+        ) == RepeatableGroupColumn.ColumnType.SELECT and not cleaned.get("choices_text"):
             self.add_error("choices_text", "Auswahlspalten brauchen mindestens einen Eintrag.")
         return cleaned
 

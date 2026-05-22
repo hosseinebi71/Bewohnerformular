@@ -57,10 +57,14 @@ def repeatable_group_create_view(request, form_id):
 def repeatable_group_edit_view(request, group_id):
     if not can_manage_settings(request.user):
         raise PermissionDenied
-    group = get_object_or_404(RepeatableGroup.objects.select_related("form", "section"), pk=group_id)
+    group = get_object_or_404(
+        RepeatableGroup.objects.select_related("form", "section"), pk=group_id
+    )
     _require_builder_editable(group.form)
     if request.method == "POST":
-        builder_form = RepeatableGroupBuilderForm(request.POST, form_definition=group.form, instance=group)
+        builder_form = RepeatableGroupBuilderForm(
+            request.POST, form_definition=group.form, instance=group
+        )
         if builder_form.is_valid():
             group = builder_form.save(commit=False)
             group.updated_by = request.user
@@ -121,7 +125,11 @@ def repeatable_group_reorder_view(request, group_id, direction):
     group = get_object_or_404(RepeatableGroup.objects.select_related("form"), pk=group_id)
     _require_builder_editable(group.form)
     if request.method == "POST" and direction in {"up", "down"}:
-        _swap_position(group, RepeatableGroup.objects.filter(form=group.form).order_by("position", "title"), direction)
+        _swap_position(
+            group,
+            RepeatableGroup.objects.filter(form=group.form).order_by("position", "title"),
+            direction,
+        )
         _sync_form(group.form)
     return redirect("form_builder:form_builder_edit", group.form_id)
 
@@ -161,7 +169,9 @@ def repeatable_column_create_view(request, group_id):
 def repeatable_column_edit_view(request, column_id):
     if not can_manage_settings(request.user):
         raise PermissionDenied
-    column = get_object_or_404(RepeatableGroupColumn.objects.select_related("group", "group__form"), pk=column_id)
+    column = get_object_or_404(
+        RepeatableGroupColumn.objects.select_related("group", "group__form"), pk=column_id
+    )
     _require_builder_editable(column.group.form)
     if request.method == "POST":
         column_form = RepeatableColumnBuilderForm(request.POST, group=column.group, instance=column)
@@ -192,7 +202,9 @@ def repeatable_column_edit_view(request, column_id):
 def repeatable_column_delete_view(request, column_id):
     if not can_manage_settings(request.user):
         raise PermissionDenied
-    column = get_object_or_404(RepeatableGroupColumn.objects.select_related("group", "group__form"), pk=column_id)
+    column = get_object_or_404(
+        RepeatableGroupColumn.objects.select_related("group", "group__form"), pk=column_id
+    )
     group = column.group
     _require_builder_editable(group.form)
     if request.method == "POST":
@@ -208,7 +220,9 @@ def repeatable_column_delete_view(request, column_id):
 def repeatable_column_reorder_view(request, column_id, direction):
     if not can_manage_settings(request.user):
         raise PermissionDenied
-    column = get_object_or_404(RepeatableGroupColumn.objects.select_related("group", "group__form"), pk=column_id)
+    column = get_object_or_404(
+        RepeatableGroupColumn.objects.select_related("group", "group__form"), pk=column_id
+    )
     _require_builder_editable(column.group.form)
     if request.method == "POST" and direction in {"up", "down"}:
         _swap_position(column, column.group.columns.order_by("position", "key"), direction)

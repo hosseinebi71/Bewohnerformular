@@ -5,10 +5,9 @@ from decimal import Decimal
 from typing import Any
 
 from django.core.exceptions import ValidationError
-from django.utils import timezone
 
 from .attachment_models import FormEntryAttachment, detect_content_type, validate_uploaded_file
-from .models import AuditLog, Field, Form, FormEntry
+from .models import AuditLog, Form, FormEntry
 from .repeatable_models import RepeatableGroup, RepeatableGroupColumn
 
 _PATCHED = False
@@ -92,7 +91,11 @@ def parse_repeatable_groups_from_post(schema: dict, post_data, files=None) -> di
 
 
 def _posted_row_count(post_data, group_key: str) -> int:
-    raw = post_data.get(f"__repeatable_{group_key}_row_count", "0") if hasattr(post_data, "get") else "0"
+    raw = (
+        post_data.get(f"__repeatable_{group_key}_row_count", "0")
+        if hasattr(post_data, "get")
+        else "0"
+    )
     try:
         return max(int(raw), 0)
     except (TypeError, ValueError):
@@ -100,7 +103,11 @@ def _posted_row_count(post_data, group_key: str) -> int:
 
 
 def _row_marked_for_delete(post_data, group_key: str, index: int) -> bool:
-    value = post_data.get(f"__repeatable_{group_key}_{index}_delete", "") if hasattr(post_data, "get") else ""
+    value = (
+        post_data.get(f"__repeatable_{group_key}_{index}_delete", "")
+        if hasattr(post_data, "get")
+        else ""
+    )
     return value in {"1", "true", "True", "on"}
 
 
@@ -148,7 +155,10 @@ def validate_repeatable_row(group: dict, row: dict, row_number: int) -> list[str
             continue
         field_type = column.get("field_type")
         rules = column.get("validation_rules") or {}
-        if field_type in {RepeatableGroupColumn.ColumnType.INTEGER, RepeatableGroupColumn.ColumnType.DECIMAL}:
+        if field_type in {
+            RepeatableGroupColumn.ColumnType.INTEGER,
+            RepeatableGroupColumn.ColumnType.DECIMAL,
+        }:
             try:
                 numeric = Decimal(str(value))
             except Exception:
@@ -165,7 +175,9 @@ def validate_repeatable_row(group: dict, row: dict, row_number: int) -> list[str
     return errors
 
 
-def apply_repeatable_payload(*, form_entry: FormEntry, post_data, files=None, user=None) -> FormEntry:
+def apply_repeatable_payload(
+    *, form_entry: FormEntry, post_data, files=None, user=None
+) -> FormEntry:
     schema = form_entry.form_snapshot or get_augmented_form_schema(form_entry.form)
     repeatable_payload = parse_repeatable_groups_from_post(schema, post_data, files=files)
     if not repeatable_payload:
@@ -179,7 +191,9 @@ def apply_repeatable_payload(*, form_entry: FormEntry, post_data, files=None, us
     return form_entry
 
 
-def _persist_repeatable_file_uploads(*, form_entry: FormEntry, schema: dict, files=None, user=None) -> None:
+def _persist_repeatable_file_uploads(
+    *, form_entry: FormEntry, schema: dict, files=None, user=None
+) -> None:
     if not files:
         return
     data = dict(form_entry.data or {})
@@ -221,7 +235,9 @@ def _persist_repeatable_file_uploads(*, form_entry: FormEntry, schema: dict, fil
         form_entry.save(update_fields=["data", "updated_at"])
 
 
-def _store_repeatable_file(*, form_entry, group_key, row_index, column_key, uploaded_file, column, user=None):
+def _store_repeatable_file(
+    *, form_entry, group_key, row_index, column_key, uploaded_file, column, user=None
+):
     validate_uploaded_file(uploaded_file, field_definition=column)
     sha256 = _sha256(uploaded_file)
     field_key = f"{group_key}__{row_index}__{column_key}"[:80]
@@ -264,7 +280,9 @@ def _sha256(uploaded_file) -> str:
     import hashlib
 
     digest = hashlib.sha256()
-    for chunk in uploaded_file.chunks() if hasattr(uploaded_file, "chunks") else [uploaded_file.read()]:
+    for chunk in (
+        uploaded_file.chunks() if hasattr(uploaded_file, "chunks") else [uploaded_file.read()]
+    ):
         digest.update(chunk)
     if pos is not None and hasattr(uploaded_file, "seek"):
         uploaded_file.seek(pos)
@@ -303,14 +321,18 @@ def install_repeatable_runtime_patches() -> None:
 
     def build_official_rows_with_repeatables(form_entry, *, data_override=None):
         rows = original_build_official_rows(form_entry, data_override=data_override)
-        data = data_override if data_override is not None else (getattr(form_entry, "data", {}) or {})
+        data = (
+            data_override if data_override is not None else (getattr(form_entry, "data", {}) or {})
+        )
         schema = getattr(form_entry, "form_snapshot", {}) or {}
         for group in schema.get("repeatable_groups", []):
             group_rows = data.get(group.get("key"), [])
             if not group_rows:
                 continue
             lines = []
-            headers = [column.get("label", column.get("key")) for column in group.get("columns", [])]
+            headers = [
+                column.get("label", column.get("key")) for column in group.get("columns", [])
+            ]
             lines.append(" | ".join(headers))
             for row in group_rows:
                 lines.append(
@@ -319,7 +341,13 @@ def install_repeatable_runtime_patches() -> None:
                         for column in group.get("columns", [])
                     )
                 )
-            rows.append({"label": group.get("title", group.get("key")), "value": "\n".join(lines), "key": group.get("key")})
+            rows.append(
+                {
+                    "label": group.get("title", group.get("key")),
+                    "value": "\n".join(lines),
+                    "key": group.get("key"),
+                }
+            )
         return rows
 
     pdf_services.build_official_rows = build_official_rows_with_repeatables

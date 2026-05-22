@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 
+from .conditional_services import apply_conditional_rules_to_form, get_conditional_rules_payload
 from .models import Form, FormEntry
 from .permissions import can_create_entries
 from .permissions import can_edit_entry as can_edit_entry_object
@@ -14,6 +15,7 @@ from .services import (
     build_entry_form_for_entry,
     create_form_entry_from_validated,
     get_entry_attachments,
+    get_form_schema,
     get_latest_generated_pdf_document,
     save_draft_from_validated,
     submit_draft_for_review,
@@ -26,6 +28,23 @@ from .views import (
     require_entry_permission,
     require_permission,
 )
+
+
+def _conditional_rules_for(form_definition: Form) -> list[dict]:
+    return get_conditional_rules_payload(form_definition)
+
+
+def _apply_conditional_validation(
+    *, entry_form, form_definition: Form, schema: dict, request, form_entry: FormEntry | None = None
+) -> bool:
+    return apply_conditional_rules_to_form(
+        form=entry_form,
+        form_definition=form_definition,
+        schema=schema,
+        cleaned_data=entry_form.cleaned_data,
+        uploaded_files=request.FILES,
+        form_entry=form_entry,
+    )
 
 
 def _entry_detail_rows(form_entry: FormEntry) -> list[dict]:
@@ -76,6 +95,7 @@ def entry_create_view(request, form_id):
         pk=form_id,
         status=Form.PublicationStatus.PUBLISHED,
     )
+    schema = get_form_schema(form_definition)
     if request.method == "POST":
         entry_form = build_entry_form(
             form_definition,
@@ -83,7 +103,12 @@ def entry_create_view(request, form_id):
             files=request.FILES,
             include_bewohner=False,
         )
-        if entry_form.is_valid():
+        if entry_form.is_valid() and _apply_conditional_validation(
+            entry_form=entry_form,
+            form_definition=form_definition,
+            schema=schema,
+            request=request,
+        ):
             try:
                 form_entry = create_form_entry_from_validated(
                     form_definition=form_definition,
@@ -109,6 +134,7 @@ def entry_create_view(request, form_id):
             current_url_name="form_builder:form_list",
             form_definition=form_definition,
             entry_form=entry_form,
+            conditional_rules=_conditional_rules_for(form_definition),
         ),
     )
 
@@ -168,6 +194,7 @@ def entry_edit_view(request, entry_id):
             form_entry=form_entry,
             entry_form=entry_form,
             attachments=get_entry_attachments(form_entry),
+            conditional_rules=_conditional_rules_for(form_entry.form),
             pdf_inline_url=None,
         ),
     )
@@ -189,8 +216,15 @@ def entry_save_view(request, entry_id):
         messages.error(request, "Dieser Eintrag kann nicht mehr als Entwurf gespeichert werden.")
         return redirect("form_builder:entry_detail", entry_id=form_entry.pk)
 
+    schema = form_entry.form_snapshot or get_form_schema(form_entry.form)
     entry_form = build_entry_form_for_entry(form_entry, data=request.POST, files=request.FILES)
-    if entry_form.is_valid():
+    if entry_form.is_valid() and _apply_conditional_validation(
+        entry_form=entry_form,
+        form_definition=form_entry.form,
+        schema=schema,
+        request=request,
+        form_entry=form_entry,
+    ):
         try:
             save_draft_from_validated(
                 form_entry=form_entry,
@@ -215,6 +249,7 @@ def entry_save_view(request, entry_id):
             form_entry=form_entry,
             entry_form=entry_form,
             attachments=get_entry_attachments(form_entry),
+            conditional_rules=_conditional_rules_for(form_entry.form),
         ),
         status=400,
     )
@@ -236,8 +271,15 @@ def entry_validate_view(request, entry_id):
         messages.error(request, "Dieser Eintrag kann nicht mehr als Entwurf validiert werden.")
         return redirect("form_builder:entry_detail", entry_id=form_entry.pk)
 
+    schema = form_entry.form_snapshot or get_form_schema(form_entry.form)
     entry_form = build_entry_form_for_entry(form_entry, data=request.POST, files=request.FILES)
-    if entry_form.is_valid():
+    if entry_form.is_valid() and _apply_conditional_validation(
+        entry_form=entry_form,
+        form_definition=form_entry.form,
+        schema=schema,
+        request=request,
+        form_entry=form_entry,
+    ):
         try:
             validate_draft(
                 form_entry=form_entry,
@@ -262,6 +304,7 @@ def entry_validate_view(request, entry_id):
             form_entry=form_entry,
             entry_form=entry_form,
             attachments=get_entry_attachments(form_entry),
+            conditional_rules=_conditional_rules_for(form_entry.form),
         ),
         status=400,
     )
@@ -283,8 +326,15 @@ def entry_review_view(request, entry_id):
         messages.error(request, "Dieser Eintrag kann nicht erneut in Review gesetzt werden.")
         return redirect("form_builder:entry_detail", entry_id=form_entry.pk)
 
+    schema = form_entry.form_snapshot or get_form_schema(form_entry.form)
     entry_form = build_entry_form_for_entry(form_entry, data=request.POST, files=request.FILES)
-    if entry_form.is_valid():
+    if entry_form.is_valid() and _apply_conditional_validation(
+        entry_form=entry_form,
+        form_definition=form_entry.form,
+        schema=schema,
+        request=request,
+        form_entry=form_entry,
+    ):
         try:
             submit_draft_for_review(
                 form_entry=form_entry,
@@ -309,6 +359,7 @@ def entry_review_view(request, entry_id):
             form_entry=form_entry,
             entry_form=entry_form,
             attachments=get_entry_attachments(form_entry),
+            conditional_rules=_conditional_rules_for(form_entry.form),
         ),
         status=400,
     )

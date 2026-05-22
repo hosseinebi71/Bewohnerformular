@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from form_builder.models import Bewohner, Field, Form, FormEntry
@@ -15,12 +16,24 @@ class RepeatableGroupTests(TestCase):
         User = get_user_model()
         self.user = User.objects.create_user(username="tester", password="x", is_staff=True)
         self.form = Form.objects.create(key="hygiene", version=1, title="Hygiene Kontrolle")
-        Field.objects.create(form=self.form, key="name", label="Name", field_type=Field.FieldType.TEXT, position=1)
+        Field.objects.create(
+            form=self.form, key="name", label="Name", field_type=Field.FieldType.TEXT, position=1
+        )
         self.group = RepeatableGroup.objects.create(
-            form=self.form, key="kontrollen", title="Kontrollpunkte", position=1, min_rows=1, max_rows=5
+            form=self.form,
+            key="kontrollen",
+            title="Kontrollpunkte",
+            position=1,
+            min_rows=1,
+            max_rows=5,
         )
         RepeatableGroupColumn.objects.create(
-            group=self.group, key="bereich", label="Bereich", column_type="text", position=1, required=True
+            group=self.group,
+            key="bereich",
+            label="Bereich",
+            column_type="text",
+            position=1,
+            required=True,
         )
         RepeatableGroupColumn.objects.create(
             group=self.group, key="ok", label="OK", column_type="boolean", position=2
@@ -28,7 +41,9 @@ class RepeatableGroupTests(TestCase):
         self.form.sync_schema()
         self.form.publish()
         self.form.refresh_from_db()
-        self.bewohner = Bewohner.objects.create(resident_number="B-1", first_name="A", last_name="B")
+        self.bewohner = Bewohner.objects.create(
+            resident_number="B-1", first_name="A", last_name="B"
+        )
 
     def test_schema_contains_repeatable_group(self):
         schema = get_augmented_form_schema(self.form)
@@ -49,7 +64,7 @@ class RepeatableGroupTests(TestCase):
     def test_required_column_is_validated(self):
         schema = get_augmented_form_schema(self.form)
         post = {"__repeatable_kontrollen_row_count": "1", "repeatable__kontrollen__0__ok": "1"}
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             parse_repeatable_groups_from_post(schema, post)
 
     def test_apply_repeatable_payload_to_entry_data(self):

@@ -31,6 +31,8 @@
 </section>
 {% endblock %}
 {% block scripts %}
+{{ conditional_rules|json_script:"conditional-rules-data" }}
 {% include "form_builder/partials/signature_pad_script.html" %}
 {% include "form_builder/partials/repeatable_group_script.html" %}
+{% include "form_builder/partials/conditional_logic_script.html" %}
 {% endblock %}

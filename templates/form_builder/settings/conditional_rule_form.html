@@ -1,0 +1,32 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface panel narrow-panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Formular-Builder</p>
+      <h2>{% if mode == "edit" %}Bedingte Regel bearbeiten{% else %}Bedingte Regel anlegen{% endif %}</h2>
+      <p>{{ form_definition.title }} v{{ form_definition.version }}</p>
+    </div>
+    <a class="button ghost" href="{% url 'form_builder:conditional_rule_list' form_definition.id %}">Zurück</a>
+  </div>
+
+  <form method="post" class="form-grid government-form">
+    {% csrf_token %}
+    {% if rule_form.non_field_errors %}
+      <div class="form-errors">{{ rule_form.non_field_errors }}</div>
+    {% endif %}
+    {% for field in rule_form %}
+      <div class="field-row">
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span>*</span>{% endif %}</label>
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
+      </div>
+    {% endfor %}
+    <div class="actionbar sticky-actions">
+      <a class="button ghost" href="{% url 'form_builder:conditional_rule_list' form_definition.id %}">Abbrechen</a>
+      <button class="button" type="submit">Speichern</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

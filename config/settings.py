@@ -130,6 +130,11 @@ LOGOUT_REDIRECT_URL = "login"
 
 # Private generated documents. Never serve this directory as static or public media.
 PRIVATE_DOCUMENT_ROOT = BASE_DIR / "private_documents"
+PRIVATE_MEDIA_ROOT = Path(
+    os.environ.get("DJANGO_PRIVATE_MEDIA_ROOT", str(BASE_DIR / "private_media"))
+)
+MEDIA_ROOT = PRIVATE_MEDIA_ROOT
+MEDIA_URL = "/media/"
 PDF_COMPANY_NAME = os.environ.get("PDF_COMPANY_NAME", "Bewohner-Formularsystem")
 
 # Development-safe email backend. It prints outgoing emails to the terminal instead of
@@ -163,16 +168,25 @@ X_FRAME_OPTIONS = "DENY"
 # EMAIL_HOST_USER = "formularsystem@example.com"
 # EMAIL_HOST_PASSWORD = "change-me"
 
+# File uploads use Django's default storage. The location is private and is never
+# mounted as static/public content. Download access goes through permission-checked views.
+_DEFAULT_STORAGE = {
+    "BACKEND": "django.core.files.storage.FileSystemStorage",
+    "OPTIONS": {"location": str(PRIVATE_MEDIA_ROOT)},
+}
+
 # Static files storage: manifest in production, plain storage in development/tests.
 # Manifest storage requires collectstatic and is therefore only safe for production.
 if DEBUG:
     STORAGES = {
+        "default": _DEFAULT_STORAGE,
         "staticfiles": {
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
     }
 else:
     STORAGES = {
+        "default": _DEFAULT_STORAGE,
         "staticfiles": {
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },

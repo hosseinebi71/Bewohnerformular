@@ -5,7 +5,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 
-from .models import Field, Form, FormSection, TimeStampedModel, UserStampedModel, UUIDPrimaryKeyModel
+from .models import Form, FormSection, TimeStampedModel, UserStampedModel, UUIDPrimaryKeyModel
 
 
 class RepeatableGroup(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
@@ -27,16 +27,25 @@ class RepeatableGroup(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     position = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
-    min_rows = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
-    max_rows = models.PositiveIntegerField(default=25, validators=[MinValueValidator(1), MaxValueValidator(200)])
+    min_rows = models.PositiveIntegerField(
+        default=0, validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+    max_rows = models.PositiveIntegerField(
+        default=25, validators=[MinValueValidator(1), MaxValueValidator(200)]
+    )
     is_active = models.BooleanField(default=True)
     ui_config = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["form", "position", "title"]
         constraints = [
-            models.UniqueConstraint(fields=["form", "key"], name="uniq_repeatable_group_key_per_form"),
-            models.CheckConstraint(condition=models.Q(max_rows__gte=models.F("min_rows")), name="repeatable_group_max_gte_min"),
+            models.UniqueConstraint(
+                fields=["form", "key"], name="uniq_repeatable_group_key_per_form"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(max_rows__gte=models.F("min_rows")),
+                name="repeatable_group_max_gte_min",
+            ),
         ]
         indexes = [
             models.Index(fields=["form", "is_active"]),
@@ -101,7 +110,9 @@ class RepeatableGroupColumn(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedMo
     key = models.SlugField(max_length=80)
     label = models.CharField(max_length=255)
     help_text = models.TextField(blank=True)
-    column_type = models.CharField(max_length=24, choices=ColumnType.choices, default=ColumnType.TEXT)
+    column_type = models.CharField(
+        max_length=24, choices=ColumnType.choices, default=ColumnType.TEXT
+    )
     position = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
     required = models.BooleanField(default=False)
     placeholder = models.CharField(max_length=255, blank=True)
@@ -113,8 +124,12 @@ class RepeatableGroupColumn(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedMo
     class Meta:
         ordering = ["group", "position", "key"]
         constraints = [
-            models.UniqueConstraint(fields=["group", "key"], name="uniq_repeatable_column_key_per_group"),
-            models.UniqueConstraint(fields=["group", "position"], name="uniq_repeatable_column_position_per_group"),
+            models.UniqueConstraint(
+                fields=["group", "key"], name="uniq_repeatable_column_key_per_group"
+            ),
+            models.UniqueConstraint(
+                fields=["group", "position"], name="uniq_repeatable_column_position_per_group"
+            ),
         ]
         indexes = [
             models.Index(fields=["group", "is_active"]),
@@ -128,7 +143,10 @@ class RepeatableGroupColumn(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedMo
         if self.column_type == self.ColumnType.SELECT:
             if not isinstance(self.choices, list) or not self.choices:
                 errors["choices"] = "Auswahlspalten brauchen mindestens einen Eintrag."
-            elif any(not isinstance(choice, dict) or "value" not in choice or "label" not in choice for choice in self.choices):
+            elif any(
+                not isinstance(choice, dict) or "value" not in choice or "label" not in choice
+                for choice in self.choices
+            ):
                 errors["choices"] = "Jede Auswahloption muss value und label enthalten."
         elif self.choices:
             errors["choices"] = "Auswahlwerte sind nur fuer Auswahlspalten erlaubt."
