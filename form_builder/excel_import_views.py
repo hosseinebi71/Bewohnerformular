@@ -7,7 +7,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .excel_import_forms import ExcelImportUploadForm, ExcelMappingForm
 from .excel_import_models import ImportJob
-from .excel_import_services import create_import_job_from_upload, generate_draft_forms_from_mapping, save_mapping
+from .excel_import_services import (
+    create_import_job_from_upload,
+    generate_draft_forms_from_mapping,
+    save_mapping,
+)
 from .navigation import get_navigation_items
 from .permissions import can_manage_settings, can_view_settings
 

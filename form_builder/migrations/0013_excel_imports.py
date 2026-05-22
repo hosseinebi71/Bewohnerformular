@@ -3,9 +3,10 @@
 import uuid
 
 import django.db.models.deletion
-import form_builder.excel_import_models
 from django.conf import settings
 from django.db import migrations, models
+
+import form_builder.excel_import_models
 
 
 class Migration(migrations.Migration):
@@ -20,7 +21,12 @@ class Migration(migrations.Migration):
             fields=[
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
+                ),
                 (
                     "uploaded_file",
                     models.FileField(
@@ -70,7 +76,12 @@ class Migration(migrations.Migration):
             fields=[
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
+                ),
                 ("sheet_index", models.PositiveIntegerField()),
                 ("name", models.CharField(max_length=255)),
                 ("used_range", models.CharField(blank=True, max_length=64)),
@@ -98,7 +109,12 @@ class Migration(migrations.Migration):
             fields=[
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
+                ),
                 ("source_ref", models.CharField(blank=True, max_length=120)),
                 (
                     "target_kind",
@@ -161,11 +177,15 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="importjob",
-            index=models.Index(fields=["status", "created_at"], name="form_builde_status_1ed79c_idx"),
+            index=models.Index(
+                fields=["status", "created_at"], name="form_builde_status_1ed79c_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="importjob",
-            index=models.Index(fields=["uploaded_by", "created_at"], name="form_builde_uploade_62d2e8_idx"),
+            index=models.Index(
+                fields=["uploaded_by", "created_at"], name="form_builde_uploade_62d2e8_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="importedsheet",
@@ -173,11 +193,15 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="importedsheet",
-            constraint=models.UniqueConstraint(fields=("job", "sheet_index"), name="uniq_imported_sheet_index"),
+            constraint=models.UniqueConstraint(
+                fields=("job", "sheet_index"), name="uniq_imported_sheet_index"
+            ),
         ),
         migrations.AddConstraint(
             model_name="importedsheet",
-            constraint=models.UniqueConstraint(fields=("job", "name"), name="uniq_imported_sheet_name"),
+            constraint=models.UniqueConstraint(
+                fields=("job", "name"), name="uniq_imported_sheet_name"
+            ),
         ),
         migrations.AddIndex(
             model_name="fieldmapping",
@@ -185,6 +209,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="fieldmapping",
-            index=models.Index(fields=["sheet", "target_kind"], name="form_builde_sheet_i_834ee5_idx"),
+            index=models.Index(
+                fields=["sheet", "target_kind"], name="form_builde_sheet_i_834ee5_idx"
+            ),
         ),
     ]

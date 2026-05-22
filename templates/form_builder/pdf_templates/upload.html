@@ -1,0 +1,19 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface panel narrow-panel">
+  <div class="panel-head"><div><p class="eyebrow">PDF-Vorlage</p><h2>Hochladen</h2></div></div>
+  <form method="post" enctype="multipart/form-data" class="form-grid government-form">
+    {% csrf_token %}
+    {% for field in upload_form %}
+      <div class="field-row">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
+      </div>
+    {% endfor %}
+    {% for error in upload_form.non_field_errors %}<small class="error">{{ error }}</small>{% endfor %}
+    <div class="actionbar"><a class="button ghost" href="{% url 'form_builder:pdf_template_list' %}">Abbrechen</a><button class="button" type="submit">Hochladen</button></div>
+  </form>
+</section>
+{% endblock %}

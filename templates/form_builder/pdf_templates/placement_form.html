@@ -1,0 +1,33 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface panel narrow-panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">PDF-Mapping</p>
+      <h2>{% if mode == "edit" %}Platzierung bearbeiten{% else %}Feld platzieren{% endif %}</h2>
+      <p>{{ template.name }} · Koordinaten sind normalisiert: 0 bis 1, Ursprung oben links.</p>
+    </div>
+  </div>
+  <form method="post" class="form-grid government-form">
+    {% csrf_token %}
+    {% for field in placement_form %}
+      <div class="field-row">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
+      </div>
+    {% endfor %}
+    {% for error in placement_form.non_field_errors %}<small class="error">{{ error }}</small>{% endfor %}
+    <div class="actionbar">
+      <a class="button ghost" href="{% url 'form_builder:pdf_template_detail' template.id %}">Abbrechen</a>
+      <button class="button" type="submit">Speichern</button>
+    </div>
+  </form>
+  {% if mode == "edit" %}
+    <form method="post" action="{% url 'form_builder:pdf_template_placement_delete' placement.id %}" onsubmit="return confirm('Diese Platzierung loeschen?');">
+      {% csrf_token %}<button class="button danger" type="submit">Loeschen</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

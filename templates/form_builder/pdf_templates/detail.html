@@ -1,0 +1,53 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="detail-layout">
+  <div class="surface panel">
+    <div class="panel-head">
+      <div>
+        <p class="eyebrow">PDF-Vorlage</p>
+        <h2>{{ template.name }}</h2>
+        <p>{{ template.form }} · {{ template.page_count }} Seite(n)</p>
+      </div>
+      <span class="badge">{{ template.get_status_display }}</span>
+    </div>
+    <dl class="definition-list">
+      <div><dt>Datei</dt><dd><a target="_blank" href="{% url 'form_builder:pdf_template_file' template.id %}">{{ template.original_filename }}</a></dd></div>
+      <div><dt>SHA-256</dt><dd>{{ template.sha256 }}</dd></div>
+      <div><dt>Groesse</dt><dd>{{ template.file_size }} Bytes</dd></div>
+    </dl>
+    <h3>Seiten</h3>
+    <table class="data-table compact">
+      <thead><tr><th>Seite</th><th>Breite</th><th>Hoehe</th><th>Rotation</th></tr></thead>
+      <tbody>{% for page in template.page_metadata %}<tr><td>{{ page.page_number }}</td><td>{{ page.width }}</td><td>{{ page.height }}</td><td>{{ page.rotation }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <aside class="surface panel actions-panel">
+    <p class="eyebrow">Aktionen</p>
+    {% if can_manage_settings %}
+      <a class="button wide" href="{% url 'form_builder:pdf_template_placement_create' template.id %}">Feld platzieren</a>
+      <form method="post" action="{% url 'form_builder:pdf_template_activate' template.id %}">{% csrf_token %}<button class="button ghost wide" type="submit">Als aktiv verwenden</button></form>
+    {% endif %}
+    <a class="button ghost wide" href="{% url 'form_builder:pdf_template_list' %}">Zurueck</a>
+  </aside>
+</section>
+<section class="surface panel">
+  <div class="panel-head"><div><p class="eyebrow">Mapping</p><h2>Feldplatzierungen</h2></div></div>
+  <table class="data-table">
+    <thead><tr><th>Feld</th><th>Seite</th><th>X/Y</th><th>B/H</th><th>Art</th><th></th></tr></thead>
+    <tbody>
+      {% for placement in placements %}
+        <tr>
+          <td>{{ placement.field.label }} <small>{{ placement.field.key }}</small></td>
+          <td>{{ placement.page_number }}</td>
+          <td>{{ placement.x }} / {{ placement.y }}</td>
+          <td>{{ placement.width }} / {{ placement.height }}</td>
+          <td>{{ placement.get_kind_display }}</td>
+          <td><a href="{% url 'form_builder:pdf_template_placement_edit' placement.id %}">Bearbeiten</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">Noch keine Felder platziert.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

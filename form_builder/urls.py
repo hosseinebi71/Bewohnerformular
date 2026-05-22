@@ -14,6 +14,16 @@ from .excel_import_views import (
     excel_import_mapping_view,
     excel_import_upload_view,
 )
+from .pdf_template_views import (
+    pdf_template_activate_view,
+    pdf_template_detail_view,
+    pdf_template_file_view,
+    pdf_template_list_view,
+    pdf_template_placement_create_view,
+    pdf_template_placement_delete_view,
+    pdf_template_placement_edit_view,
+    pdf_template_upload_view,
+)
 from .repeatable_builder_views import (
     repeatable_column_create_view,
     repeatable_column_delete_view,
@@ -94,9 +104,7 @@ urlpatterns = [
     path("formulare/eintraege/<uuid:entry_id>/bearbeiten/", entry_edit_view, name="entry_edit"),
     path("formulare/eintraege/<uuid:entry_id>/speichern/", entry_save_view, name="entry_save"),
     path(
-        "formulare/eintraege/<uuid:entry_id>/schicken/",
-        entry_send_now_view,
-        name="entry_send_now",
+        "formulare/eintraege/<uuid:entry_id>/schicken/", entry_send_now_view, name="entry_send_now"
     ),
     path(
         "formulare/eintraege/<uuid:entry_id>/validieren/",
@@ -105,20 +113,14 @@ urlpatterns = [
     ),
     path("formulare/eintraege/<uuid:entry_id>/review/", entry_review_view, name="entry_review"),
     path(
-        "formulare/eintraege/<uuid:entry_id>/freigeben/",
-        entry_approve_view,
-        name="entry_approve",
+        "formulare/eintraege/<uuid:entry_id>/freigeben/", entry_approve_view, name="entry_approve"
     ),
     path(
-        "formulare/eintraege/<uuid:entry_id>/zurueckweisen/",
-        entry_reject_view,
-        name="entry_reject",
+        "formulare/eintraege/<uuid:entry_id>/zurueckweisen/", entry_reject_view, name="entry_reject"
     ),
     path("formulare/eintraege/<uuid:entry_id>/ausgangskorb/", entry_queue_view, name="entry_queue"),
     path(
-        "formulare/eintraege/<uuid:entry_id>/pdf/",
-        entry_pdf_preview_view,
-        name="entry_pdf_preview",
+        "formulare/eintraege/<uuid:entry_id>/pdf/", entry_pdf_preview_view, name="entry_pdf_preview"
     ),
     path(
         "formulare/eintraege/<uuid:entry_id>/pdf/live/",
@@ -169,6 +171,42 @@ urlpatterns = [
         "einstellungen/excel-importe/<uuid:job_id>/generieren/",
         excel_import_generate_view,
         name="excel_import_generate",
+    ),
+    path("einstellungen/pdf-vorlagen/", pdf_template_list_view, name="pdf_template_list"),
+    path(
+        "einstellungen/pdf-vorlagen/hochladen/",
+        pdf_template_upload_view,
+        name="pdf_template_upload",
+    ),
+    path(
+        "einstellungen/pdf-vorlagen/<uuid:template_id>/",
+        pdf_template_detail_view,
+        name="pdf_template_detail",
+    ),
+    path(
+        "einstellungen/pdf-vorlagen/<uuid:template_id>/datei/",
+        pdf_template_file_view,
+        name="pdf_template_file",
+    ),
+    path(
+        "einstellungen/pdf-vorlagen/<uuid:template_id>/aktivieren/",
+        pdf_template_activate_view,
+        name="pdf_template_activate",
+    ),
+    path(
+        "einstellungen/pdf-vorlagen/<uuid:template_id>/platzierungen/neu/",
+        pdf_template_placement_create_view,
+        name="pdf_template_placement_create",
+    ),
+    path(
+        "einstellungen/pdf-vorlagen/platzierungen/<uuid:placement_id>/bearbeiten/",
+        pdf_template_placement_edit_view,
+        name="pdf_template_placement_edit",
+    ),
+    path(
+        "einstellungen/pdf-vorlagen/platzierungen/<uuid:placement_id>/loeschen/",
+        pdf_template_placement_delete_view,
+        name="pdf_template_placement_delete",
     ),
     path("einstellungen/form-builder/", form_builder_list_view, name="form_builder_list"),
     path("einstellungen/form-builder/neu/", form_builder_create_view, name="form_builder_create"),

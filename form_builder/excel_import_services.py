@@ -14,7 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.text import slugify
 
-from .excel_import_models import ImportJob, ImportedSheet, SUPPORTED_EXCEL_EXTENSIONS
+from .excel_import_models import SUPPORTED_EXCEL_EXTENSIONS, ImportedSheet, ImportJob
 from .models import AuditLog, Field, Form, FormSection
 from .repeatable_models import RepeatableGroup, RepeatableGroupColumn
 
@@ -44,7 +44,15 @@ CHECKBOX_VALUES = {
 }
 DATE_HINTS = {"datum", "frist", "geburt", "date", "termin", "faellig", "fällig"}
 NUMBER_HINTS = {"nr", "nummer", "anzahl", "menge", "betrag", "summe", "preis"}
-LONG_TEXT_HINTS = {"bemerkung", "beschreibung", "mangel", "maßnahme", "massnahme", "notiz", "hinweis"}
+LONG_TEXT_HINTS = {
+    "bemerkung",
+    "beschreibung",
+    "mangel",
+    "maßnahme",
+    "massnahme",
+    "notiz",
+    "hinweis",
+}
 PHOTO_HINTS = {"foto", "bild", "datei", "anlage", "upload"}
 SIGNATURE_HINTS = {"unterschrift", "signatur"}
 
@@ -118,7 +126,9 @@ def analyze_import_job(job: ImportJob) -> ImportJob:
         job.mapping = build_default_mapping(analysis)
         job.status = ImportJob.ImportStatus.ANALYZED
         job.error_message = ""
-        job.save(update_fields=["analysis_result", "mapping", "status", "error_message", "updated_at"])
+        job.save(
+            update_fields=["analysis_result", "mapping", "status", "error_message", "updated_at"]
+        )
         ImportedSheet.objects.filter(job=job).delete()
         for index, sheet in enumerate(analysis.get("sheets", []), start=1):
             ImportedSheet.objects.create(
@@ -150,7 +160,9 @@ def analyze_workbook(file_obj, *, original_filename: str = "workbook.xlsx") -> d
             bounds.column_count, MAX_COLUMNS_PER_SHEET
         )
         if total_cells > MAX_CELLS_TOTAL:
-            raise ValidationError("Excel-Datei enthaelt zu viele Zellen fuer einen sicheren Import.")
+            raise ValidationError(
+                "Excel-Datei enthaelt zu viele Zellen fuer einen sicheren Import."
+            )
         sheets.append(_analyze_sheet(worksheet, sheet_index=sheet_index, bounds=bounds))
     return {
         "version": 1,
@@ -208,7 +220,9 @@ def _analyze_sheet(worksheet, *, sheet_index: int, bounds: SheetBounds) -> dict:
     checkbox_like_cells = _detect_checkbox_like_cells(worksheet, bounds)
     date_like_cells = _detect_date_like_cells(worksheet, bounds)
     empty_input_cells = _detect_empty_input_cells(worksheet, bounds, tables)
-    detected_fields = _detected_fields_from_inputs(empty_input_cells, date_like_cells, checkbox_like_cells)
+    detected_fields = _detected_fields_from_inputs(
+        empty_input_cells, date_like_cells, checkbox_like_cells
+    )
     return {
         "index": sheet_index,
         "name": worksheet.title,
@@ -243,7 +257,10 @@ def _detect_title_cells(worksheet, bounds: SheetBounds, merged_cells: list[str])
 
 
 def _row_values(worksheet, row: int, bounds: SheetBounds) -> list[str]:
-    return [_as_text(worksheet.cell(row, col).value) for col in range(bounds.min_col, bounds.max_col + 1)]
+    return [
+        _as_text(worksheet.cell(row, col).value)
+        for col in range(bounds.min_col, bounds.max_col + 1)
+    ]
 
 
 def _detect_header_rows(worksheet, bounds: SheetBounds) -> list[dict]:
@@ -289,7 +306,9 @@ def _infer_field_type(label: str, sample_values: list[Any]) -> str:
     non_empty = [value for value in sample_values if value not in (None, "")]
     if non_empty and all(_looks_checkbox(value) for value in non_empty):
         return "checkbox"
-    if non_empty and all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in non_empty):
+    if non_empty and all(
+        isinstance(value, (int, float)) and not isinstance(value, bool) for value in non_empty
+    ):
         return "number"
     if non_empty and all(isinstance(value, (date, datetime)) for value in non_empty):
         return "date"
@@ -310,7 +329,10 @@ def _detect_tables(worksheet, bounds: SheetBounds, header_rows: list[dict]) -> l
         for column in header["columns"]:
             col = column["column"]
             label = column["label"]
-            sample_values = [worksheet.cell(r, col).value for r in range(row + 1, min(row + 16, bounds.max_row) + 1)]
+            sample_values = [
+                worksheet.cell(r, col).value
+                for r in range(row + 1, min(row + 16, bounds.max_row) + 1)
+            ]
             columns.append(
                 {
                     "source_ref": worksheet.cell(row, col).coordinate,
@@ -323,7 +345,9 @@ def _detect_tables(worksheet, bounds: SheetBounds, header_rows: list[dict]) -> l
         if len(columns) >= 2:
             data_end = row
             for candidate in range(row + 1, bounds.max_row + 1):
-                values = [_as_text(worksheet.cell(candidate, col["column"]).value) for col in columns]
+                values = [
+                    _as_text(worksheet.cell(candidate, col["column"]).value) for col in columns
+                ]
                 if not any(values):
                     break
                 data_end = candidate
@@ -369,7 +393,9 @@ def _detect_date_like_cells(worksheet, bounds: SheetBounds) -> list[dict]:
             cell = worksheet.cell(row, col)
             value = cell.value
             number_format = str(getattr(cell, "number_format", "") or "").lower()
-            if isinstance(value, (date, datetime)) or any(hint in number_format for hint in ["yy", "dd", "mm"]):
+            if isinstance(value, (date, datetime)) or any(
+                hint in number_format for hint in ["yy", "dd", "mm"]
+            ):
                 cells.append({"cell": cell.coordinate, "value": _as_text(_cell_value(cell))})
     return cells
 
@@ -396,11 +422,19 @@ def _detect_empty_input_cells(worksheet, bounds: SheetBounds, tables: list[dict]
             above = _as_text(worksheet.cell(row - 1, col).value) if row > bounds.min_row else ""
             label = left or above
             if label and any(ch.isalpha() for ch in label):
-                inputs.append({"cell": cell.coordinate, "label": label[:120], "source": "left" if left else "above"})
+                inputs.append(
+                    {
+                        "cell": cell.coordinate,
+                        "label": label[:120],
+                        "source": "left" if left else "above",
+                    }
+                )
     return inputs
 
 
-def _detected_fields_from_inputs(inputs: list[dict], date_cells: list[dict], checkbox_cells: list[dict]) -> list[dict]:
+def _detected_fields_from_inputs(
+    inputs: list[dict], date_cells: list[dict], checkbox_cells: list[dict]
+) -> list[dict]:
     fields = []
     used = set()
     date_refs = {item["cell"] for item in date_cells}
@@ -414,7 +448,9 @@ def _detected_fields_from_inputs(inputs: list[dict], date_cells: list[dict], che
             field_type = "date"
         if item["cell"] in checkbox_refs:
             field_type = "checkbox"
-        fields.append({"label": label, "key": key, "field_type": field_type, "source_ref": item["cell"]})
+        fields.append(
+            {"label": label, "key": key, "field_type": field_type, "source_ref": item["cell"]}
+        )
     return fields
 
 
@@ -432,18 +468,25 @@ def safe_unique_key(label: str, used: set[str] | None = None) -> str:
 
 
 def build_default_mapping(analysis: dict, *, mode: str = "one_form_per_sheet") -> dict:
-    selected = [sheet.get("name") for sheet in analysis.get("sheets", []) if sheet.get("row_count", 0) > 0]
+    selected = [
+        sheet.get("name") for sheet in analysis.get("sheets", []) if sheet.get("row_count", 0) > 0
+    ]
     return {
         "version": 1,
         "mode": mode,
-        "form_title": os.path.splitext(analysis.get("source_filename", "Excel Import"))[0] or "Excel Import",
+        "form_title": os.path.splitext(analysis.get("source_filename", "Excel Import"))[0]
+        or "Excel Import",
         "selected_sheets": selected,
         "sheets": [_mapping_for_sheet(sheet) for sheet in analysis.get("sheets", [])],
     }
 
 
 def _mapping_for_sheet(sheet: dict) -> dict:
-    title = sheet.get("title_cells", [{}])[0].get("value") if sheet.get("title_cells") else sheet.get("name")
+    title = (
+        sheet.get("title_cells", [{}])[0].get("value")
+        if sheet.get("title_cells")
+        else sheet.get("name")
+    )
     fields = sheet.get("detected_fields") or []
     tables = []
     for table in sheet.get("tables", [])[:3]:
@@ -493,12 +536,30 @@ def validate_mapping(mapping: dict) -> None:
         if sheet.get("name") in selected and not sheet.get("title"):
             raise ValidationError("Ausgewaehlte Blaetter brauchen einen Titel.")
         for field in sheet.get("fields", []):
-            if field.get("field_type") not in {"text", "textarea", "checkbox", "date", "number", "select", "file"}:
+            if field.get("field_type") not in {
+                "text",
+                "textarea",
+                "checkbox",
+                "date",
+                "number",
+                "select",
+                "file",
+            }:
                 raise ValidationError("Ein Feldmapping enthaelt einen nicht erlaubten Feldtyp.")
         for table in sheet.get("tables", []):
             for column in table.get("columns", []):
-                if column.get("field_type") not in {"text", "textarea", "checkbox", "date", "number", "select", "file"}:
-                    raise ValidationError("Eine Tabellenspalte enthaelt einen nicht erlaubten Feldtyp.")
+                if column.get("field_type") not in {
+                    "text",
+                    "textarea",
+                    "checkbox",
+                    "date",
+                    "number",
+                    "select",
+                    "file",
+                }:
+                    raise ValidationError(
+                        "Eine Tabellenspalte enthaelt einen nicht erlaubten Feldtyp."
+                    )
 
 
 def save_mapping(*, job: ImportJob, mapping: dict) -> ImportJob:
@@ -521,7 +582,10 @@ def generate_draft_forms_from_mapping(*, job: ImportJob, user) -> list[Form]:
         generated = (
             [_generate_combined_form(job=job, mapping=mapping, sheets=sheets, user=user)]
             if mapping.get("mode") == "all_sheets_one_form"
-            else [_generate_form_for_sheet(job=job, mapping=mapping, sheet=sheet, user=user) for sheet in sheets]
+            else [
+                _generate_form_for_sheet(job=job, mapping=mapping, sheet=sheet, user=user)
+                for sheet in sheets
+            ]
         )
         job.generated_form_ids = [str(form.pk) for form in generated]
         job.status = ImportJob.ImportStatus.GENERATED
@@ -568,7 +632,9 @@ def _create_form(*, title: str, user, source: dict) -> Form:
 
 def _generate_form_for_sheet(*, job: ImportJob, mapping: dict, sheet: dict, user) -> Form:
     title = sheet.get("title") or sheet.get("name") or mapping.get("form_title") or "Excel Import"
-    form = _create_form(title=title, user=user, source={"job_id": str(job.pk), "sheet": sheet.get("name")})
+    form = _create_form(
+        title=title, user=user, source={"job_id": str(job.pk), "sheet": sheet.get("name")}
+    )
     section = FormSection.objects.create(
         form=form,
         title=title[:255],
@@ -585,7 +651,9 @@ def _generate_form_for_sheet(*, job: ImportJob, mapping: dict, sheet: dict, user
 
 def _generate_combined_form(*, job: ImportJob, mapping: dict, sheets: list[dict], user) -> Form:
     title = mapping.get("form_title") or job.original_filename or "Excel Import"
-    form = _create_form(title=title, user=user, source={"job_id": str(job.pk), "mode": "all_sheets_one_form"})
+    form = _create_form(
+        title=title, user=user, source={"job_id": str(job.pk), "mode": "all_sheets_one_form"}
+    )
     for index, sheet in enumerate(sheets, start=1):
         section = FormSection.objects.create(
             form=form,
@@ -618,12 +686,17 @@ def _column_type_for_model(field_type: str) -> str:
 
 def _next_field_position(form: Form) -> int:
     last_position = (
-        Field.objects.filter(form=form).order_by("-position").values_list("position", flat=True).first()
+        Field.objects.filter(form=form)
+        .order_by("-position")
+        .values_list("position", flat=True)
+        .first()
     )
     return int(last_position or 0) + 1
 
 
-def _create_fields_and_tables(*, form: Form, section: FormSection, sheet: dict, job: ImportJob, user) -> None:
+def _create_fields_and_tables(
+    *, form: Form, section: FormSection, sheet: dict, job: ImportJob, user
+) -> None:
     used_field_keys = set(Field.objects.filter(form=form).values_list("key", flat=True))
     position = _next_field_position(form)
     for field in sheet.get("fields", [])[:80]:
@@ -638,18 +711,32 @@ def _create_fields_and_tables(*, form: Form, section: FormSection, sheet: dict, 
             field_type=_field_type_for_model(field.get("field_type", "text")),
             position=position,
             required=bool(field.get("required", False)),
-            ui_config={"excel_import": {"job_id": str(job.pk), "sheet": sheet.get("name"), "source_ref": field.get("source_ref")}},
+            ui_config={
+                "excel_import": {
+                    "job_id": str(job.pk),
+                    "sheet": sheet.get("name"),
+                    "source_ref": field.get("source_ref"),
+                }
+            },
             created_by=user,
             updated_by=user,
         )
         position += 1
     for table in sheet.get("tables", [])[:10]:
-        _create_repeatable_group(form=form, section=section, table=table, job=job, sheet=sheet, user=user)
+        _create_repeatable_group(
+            form=form, section=section, table=table, job=job, sheet=sheet, user=user
+        )
 
 
-def _create_repeatable_group(*, form: Form, section: FormSection, table: dict, job: ImportJob, sheet: dict, user) -> RepeatableGroup:
-    existing_group_keys = set(RepeatableGroup.objects.filter(form=form).values_list("key", flat=True))
-    group_key = safe_unique_key(table.get("key") or table.get("title") or "tabelle", existing_group_keys)
+def _create_repeatable_group(
+    *, form: Form, section: FormSection, table: dict, job: ImportJob, sheet: dict, user
+) -> RepeatableGroup:
+    existing_group_keys = set(
+        RepeatableGroup.objects.filter(form=form).values_list("key", flat=True)
+    )
+    group_key = safe_unique_key(
+        table.get("key") or table.get("title") or "tabelle", existing_group_keys
+    )
     group = RepeatableGroup.objects.create(
         form=form,
         section=section,
@@ -659,7 +746,13 @@ def _create_repeatable_group(*, form: Form, section: FormSection, table: dict, j
         position=int(table.get("position") or 1),
         min_rows=int(table.get("min_rows") or 0),
         max_rows=min(int(table.get("max_rows") or 100), 200),
-        ui_config={"excel_import": {"job_id": str(job.pk), "sheet": sheet.get("name"), "source_ref": table.get("source_ref")}},
+        ui_config={
+            "excel_import": {
+                "job_id": str(job.pk),
+                "sheet": sheet.get("name"),
+                "source_ref": table.get("source_ref"),
+            }
+        },
         created_by=user,
         updated_by=user,
     )
@@ -686,7 +779,13 @@ def _create_repeatable_group(*, form: Form, section: FormSection, table: dict, j
             position=index,
             required=bool(column.get("required", False)),
             validation_rules=rules,
-            ui_config={"excel_import": {"job_id": str(job.pk), "sheet": sheet.get("name"), "source_ref": column.get("source_ref")}},
+            ui_config={
+                "excel_import": {
+                    "job_id": str(job.pk),
+                    "sheet": sheet.get("name"),
+                    "source_ref": column.get("source_ref"),
+                }
+            },
             created_by=user,
             updated_by=user,
         )
@@ -722,7 +821,16 @@ def build_hygiene_demo_workbook_bytes() -> bytes:
         ws = workbook.create_sheet(sheet_name)
         ws.merge_cells("A1:H1")
         ws["A1"] = f"Hygiene Kontrolle {sheet_name}"
-        headers = ["Bereich", "Kontrollpunkt", "OK", "Nicht OK", "Bemerkung", "Maßnahme", "Verantwortlich", "Frist"]
+        headers = [
+            "Bereich",
+            "Kontrollpunkt",
+            "OK",
+            "Nicht OK",
+            "Bemerkung",
+            "Maßnahme",
+            "Verantwortlich",
+            "Frist",
+        ]
         for col, label in enumerate(headers, start=1):
             ws.cell(3, col).value = label
         for row in range(4, 9):

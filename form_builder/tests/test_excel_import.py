@@ -48,7 +48,9 @@ class ExcelImportAnalyzerTests(TestCase):
             ws["B4"] = "☐"
             ws["C4"] = "☐"
 
-        analysis = analyze_workbook(BytesIO(self.workbook_bytes(build)), original_filename="hygiene.xlsx")
+        analysis = analyze_workbook(
+            BytesIO(self.workbook_bytes(build)), original_filename="hygiene.xlsx"
+        )
         sheet = analysis["sheets"][0]
         self.assertEqual(sheet["name"], "Hygiene")
         self.assertTrue(sheet["title_cells"])
@@ -61,7 +63,9 @@ class ExcelImportAnalyzerTests(TestCase):
             workbook.active.title = "Leer"
             workbook.create_sheet("Daten")["A1"] = "Titel"
 
-        analysis = analyze_workbook(BytesIO(self.workbook_bytes(build)), original_filename="multi.xlsx")
+        analysis = analyze_workbook(
+            BytesIO(self.workbook_bytes(build)), original_filename="multi.xlsx"
+        )
         self.assertEqual(analysis["sheet_count"], 2)
         empty_sheet = analysis["sheets"][0]
         self.assertEqual(empty_sheet["row_count"], 0)
@@ -131,6 +135,8 @@ class ExcelImportGenerationTests(TestCase):
         required_if_columns = []
         for group in RepeatableGroup.objects.filter(form=form):
             required_if_columns.extend(
-                column for column in group.columns.all() if (column.validation_rules or {}).get("required_if")
+                column
+                for column in group.columns.all()
+                if (column.validation_rules or {}).get("required_if")
             )
         self.assertTrue(required_if_columns)

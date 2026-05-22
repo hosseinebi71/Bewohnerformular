@@ -24,7 +24,10 @@ class ExcelMappingForm(forms.Form):
         label="Importmodus",
         choices=(
             ("one_form_per_sheet", "Jedes Blatt wird ein eigenes Formular"),
-            ("all_sheets_one_form", "Alle ausgewaehlten Blaetter werden Abschnitte eines Formulars"),
+            (
+                "all_sheets_one_form",
+                "Alle ausgewaehlten Blaetter werden Abschnitte eines Formulars",
+            ),
         ),
     )
     selected_sheets = forms.MultipleChoiceField(

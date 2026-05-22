@@ -10,7 +10,6 @@ from django.utils.text import get_valid_filename
 
 from .models import TimeStampedModel, UUIDPrimaryKeyModel
 
-
 SUPPORTED_EXCEL_EXTENSIONS = {".xlsx"}
 
 
@@ -62,13 +61,17 @@ class ImportJob(UUIDPrimaryKeyModel, TimeStampedModel):
         filename = self.original_filename or getattr(self.uploaded_file, "name", "")
         ext = os.path.splitext(filename.lower())[1]
         if ext and ext not in SUPPORTED_EXCEL_EXTENSIONS:
-            errors["uploaded_file"] = "Bitte eine echte .xlsx-Datei hochladen. Makro-Dateien werden nicht akzeptiert."
+            errors["uploaded_file"] = (
+                "Bitte eine echte .xlsx-Datei hochladen. Makro-Dateien werden nicht akzeptiert."
+            )
         if not isinstance(self.analysis_result, dict):
             errors["analysis_result"] = "Analyseergebnis muss als JSON-Objekt gespeichert werden."
         if not isinstance(self.mapping, dict):
             errors["mapping"] = "Mapping muss als JSON-Objekt gespeichert werden."
         if not isinstance(self.generated_form_ids, list):
-            errors["generated_form_ids"] = "Generierte Formulare muessen als Liste gespeichert werden."
+            errors["generated_form_ids"] = (
+                "Generierte Formulare muessen als Liste gespeichert werden."
+            )
         if errors:
             raise ValidationError(errors)
 
@@ -89,7 +92,9 @@ class ImportedSheet(UUIDPrimaryKeyModel, TimeStampedModel):
     class Meta:
         ordering = ["job", "sheet_index"]
         constraints = [
-            models.UniqueConstraint(fields=["job", "sheet_index"], name="uniq_imported_sheet_index"),
+            models.UniqueConstraint(
+                fields=["job", "sheet_index"], name="uniq_imported_sheet_index"
+            ),
             models.UniqueConstraint(fields=["job", "name"], name="uniq_imported_sheet_name"),
         ]
         indexes = [models.Index(fields=["job", "selected"])]
@@ -98,7 +103,9 @@ class ImportedSheet(UUIDPrimaryKeyModel, TimeStampedModel):
 
     def clean(self) -> None:
         if not isinstance(self.analysis, dict):
-            raise ValidationError({"analysis": "Blattanalyse muss als JSON-Objekt gespeichert werden."})
+            raise ValidationError(
+                {"analysis": "Blattanalyse muss als JSON-Objekt gespeichert werden."}
+            )
 
     def __str__(self) -> str:
         return f"{self.job_id} - {self.name}"
@@ -130,7 +137,9 @@ class FieldMapping(UUIDPrimaryKeyModel, TimeStampedModel):
         related_name="field_mappings",
     )
     source_ref = models.CharField(max_length=120, blank=True)
-    target_kind = models.CharField(max_length=24, choices=TargetKind.choices, default=TargetKind.FIELD)
+    target_kind = models.CharField(
+        max_length=24, choices=TargetKind.choices, default=TargetKind.FIELD
+    )
     target_key = models.SlugField(max_length=80)
     label = models.CharField(max_length=255)
     field_type = models.CharField(max_length=24, choices=FieldType.choices, default=FieldType.TEXT)
@@ -150,7 +159,9 @@ class FieldMapping(UUIDPrimaryKeyModel, TimeStampedModel):
         if self.sheet_id and self.job_id and self.sheet.job_id != self.job_id:
             raise ValidationError({"sheet": "Das Blatt gehoert nicht zu diesem Importjob."})
         if not isinstance(self.config, dict):
-            raise ValidationError({"config": "Mapping-Konfiguration muss als JSON-Objekt gespeichert werden."})
+            raise ValidationError(
+                {"config": "Mapping-Konfiguration muss als JSON-Objekt gespeichert werden."}
+            )
 
     def __str__(self) -> str:
         return f"{self.label} -> {self.target_key}"

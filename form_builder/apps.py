@@ -12,4 +12,8 @@ class FormBuilderConfig(AppConfig):
         import form_builder.attachment_models  # noqa: F401
         import form_builder.conditional_models  # noqa: F401
         import form_builder.excel_import_models  # noqa: F401
+        import form_builder.pdf_template_models  # noqa: F401
         import form_builder.repeatable_models  # noqa: F401
+        from form_builder.pdf_template_services import register_pdf_template_renderer
+
+        register_pdf_template_renderer()
