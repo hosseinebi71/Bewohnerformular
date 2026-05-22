@@ -1242,3 +1242,64 @@ button.button {
     padding: 26px;
   }
 }
+
+/* v17: dynamic form sections */
+.form-section {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+.form-section-title {
+  width: 100%;
+  padding: 16px 22px 6px;
+  color: #0b1f3a;
+  font-size: 16px;
+  font-weight: 950;
+}
+.form-section-description {
+  margin: 0;
+  padding: 0 22px 14px;
+  color: var(--muted);
+}
+.form-section.is-collapsible .form-section-title::after {
+  content: " einklappbar";
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.section-fields {
+  border-top: 1px solid #edf2f7;
+}
+
+/* Form builder */
+.builder-panel { margin-top: 18px; }
+.builder-section-card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+  margin-top: 14px;
+  background: #fff;
+}
+.builder-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.builder-section-head small,
+.builder-fields-table small { display: block; color: var(--muted); margin-top: 4px; }
+.compact-actions form,
+.action-stack form { display: inline-flex; margin: 0; }
+.builder-fields-table .table-action { min-width: 260px; }
+.danger-link { color: #b42318; border-color: rgba(180, 35, 24, .25); }
+.badge.muted { background: #f1f5f9; color: var(--muted); }
+
+@media (max-width: 760px) {
+  .builder-section-head { flex-direction: column; }
+  .builder-fields-table .table-action { min-width: 0; }
+}

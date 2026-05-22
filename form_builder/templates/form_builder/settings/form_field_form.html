@@ -1,0 +1,20 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="settings-layout">
+  <aside class="settings-menu surface">{% include "form_builder/settings/form_builder_menu.html" %}</aside>
+  <section class="surface settings-content form-card">
+    <div class="panel-head"><div><p class="eyebrow">{{ form_definition.title }}</p><h2>{% if mode == 'edit' %}Feld bearbeiten{% else %}Feld anlegen{% endif %}</h2></div></div>
+    <form class="settings-form compact-form" method="post">{% csrf_token %}
+      <div class="form-two-col"><div class="field-row"><label>{{ field_form.section.label }}</label>{{ field_form.section }}{{ field_form.section.errors }}</div><div class="field-row"><label>{{ field_form.position.label }}</label>{{ field_form.position }}{{ field_form.position.errors }}</div></div>
+      <div class="form-two-col"><div class="field-row"><label>{{ field_form.key.label }}</label>{{ field_form.key }}{{ field_form.key.errors }}</div><div class="field-row"><label>{{ field_form.field_type.label }}</label>{{ field_form.field_type }}{{ field_form.field_type.errors }}</div></div>
+      <div class="field-row"><label>{{ field_form.label.label }}</label>{{ field_form.label }}{{ field_form.label.errors }}</div>
+      <div class="field-row"><label>{{ field_form.help_text.label }}</label>{{ field_form.help_text }}{{ field_form.help_text.errors }}</div>
+      <div class="field-row"><label>{{ field_form.placeholder.label }}</label>{{ field_form.placeholder }}{{ field_form.placeholder.errors }}</div>
+      <div class="field-row"><label>{{ field_form.choices_text.label }}</label>{{ field_form.choices_text }}{{ field_form.choices_text.errors }}<small>{{ field_form.choices_text.help_text }}</small></div>
+      <div class="field-row field-row-checks"><label>Optionen</label><span class="inline-checks">{{ field_form.required }} Pflicht {{ field_form.is_active }} Aktiv</span></div>
+      {% if field_form.non_field_errors %}<div class="message error">{{ field_form.non_field_errors }}</div>{% endif %}
+      <div class="actionbar"><a class="button ghost" href="{% url 'form_builder:form_builder_edit' form_definition.pk %}">Zurück</a><button class="button" type="submit">Speichern</button></div>
+    </form>
+  </section>
+</section>
+{% endblock %}

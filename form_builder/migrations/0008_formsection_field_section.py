@@ -108,6 +108,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="field",
-            index=models.Index(fields=["section", "is_active"], name="form_builde_section_7406d6_idx"),
+            index=models.Index(
+                fields=["section", "is_active"], name="form_builde_section_7406d6_idx"
+            ),
         ),
     ]

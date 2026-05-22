@@ -5,17 +5,28 @@ from uuid import uuid4
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
-from .forms import FormRecipientSettingsForm, UserAccessProfileForm
+from .forms import (
+    ConfirmDeleteForm,
+    FieldBuilderForm,
+    FormBuilderMetadataForm,
+    FormRecipientSettingsForm,
+    FormSectionBuilderForm,
+    UserAccessProfileForm,
+)
 from .mail_services import process_outbox_queue
 from .models import (
     AuditLog,
+    Field,
     Form,
     FormEntry,
     FormRecipient,
     FormSchedule,
+    FormSection,
     PDFDocument,
     UserAccessProfile,
 )
@@ -1080,3 +1091,333 @@ def pdf_download_view(request, pdf_id):
         filename=pdf_document.original_filename,
         content_type=pdf_document.content_type or "application/pdf",
     )
+
+
+def _save_form_builder_metadata(form_definition: Form, *, user):
+    form_definition.updated_by = user
+    if form_definition.status == Form.PublicationStatus.PUBLISHED:
+        form_definition.published_at = form_definition.published_at or timezone.now()
+        form_definition.full_clean()
+        with transaction.atomic():
+            Form.objects.filter(
+                key=form_definition.key,
+                status=Form.PublicationStatus.PUBLISHED,
+            ).exclude(pk=form_definition.pk).update(
+                status=Form.PublicationStatus.RETIRED,
+                published_at=None,
+            )
+            form_definition.save()
+        return
+    form_definition.save()
+
+
+def _next_form_version(form_key: str) -> int:
+    versions = Form.objects.filter(key=form_key).values_list("version", flat=True)
+    return (max(versions) + 1) if versions else 1
+
+
+def _require_form_builder_editable(form_definition: Form) -> None:
+    if form_definition.status == Form.PublicationStatus.PUBLISHED:
+        raise PermissionDenied("Veroeffentlichte Formulare sind im Builder schreibgeschuetzt.")
+
+
+def _sync_builder_form(form_definition: Form) -> None:
+    form_definition.sync_schema()
+
+
+@login_required(login_url="login")
+def form_builder_list_view(request):
+    require_permission(can_manage_settings(request.user))
+    forms = Form.objects.prefetch_related("sections", "fields").order_by("title", "key", "-version")
+    context = build_app_context(
+        request,
+        title="Formular-Builder",
+        current_url_name="form_builder:form_builder_list",
+        forms=forms,
+    )
+    return render(request, "form_builder/settings/form_builder_list.html", context)
+
+
+@login_required(login_url="login")
+def form_builder_create_view(request):
+    require_permission(can_manage_settings(request.user))
+    if request.method == "POST":
+        builder_form = FormBuilderMetadataForm(request.POST)
+        if builder_form.is_valid():
+            form_definition = builder_form.save(commit=False)
+            form_definition.created_by = request.user
+            if not form_definition.version:
+                form_definition.version = _next_form_version(form_definition.key)
+            _save_form_builder_metadata(form_definition, user=request.user)
+            _sync_builder_form(form_definition)
+            messages.success(
+                request,
+                "Formular wurde angelegt. Abschnitte und Felder koennen jetzt erfasst werden.",
+            )
+            return redirect("form_builder:form_builder_edit", form_definition.pk)
+        messages.error(request, "Formular konnte nicht angelegt werden. Bitte Eingaben pruefen.")
+    else:
+        builder_form = FormBuilderMetadataForm(initial={"version": 1})
+    context = build_app_context(
+        request,
+        title="Formular anlegen",
+        current_url_name="form_builder:form_builder_list",
+        builder_form=builder_form,
+        mode="create",
+    )
+    return render(request, "form_builder/settings/form_builder_form.html", context)
+
+
+@login_required(login_url="login")
+def form_builder_edit_view(request, form_id):
+    require_permission(can_manage_settings(request.user))
+    form_definition = get_object_or_404(
+        Form.objects.prefetch_related("sections", "fields"), pk=form_id
+    )
+    is_locked = form_definition.status == Form.PublicationStatus.PUBLISHED
+    if request.method == "POST":
+        _require_form_builder_editable(form_definition)
+        builder_form = FormBuilderMetadataForm(request.POST, instance=form_definition)
+        if builder_form.is_valid():
+            form_definition = builder_form.save(commit=False)
+            _save_form_builder_metadata(form_definition, user=request.user)
+            _sync_builder_form(form_definition)
+            messages.success(request, "Formular-Metadaten wurden gespeichert.")
+            return redirect("form_builder:form_builder_edit", form_definition.pk)
+        messages.error(request, "Bitte Eingaben pruefen.")
+    else:
+        builder_form = FormBuilderMetadataForm(instance=form_definition)
+    context = build_app_context(
+        request,
+        title="Formular bearbeiten",
+        current_url_name="form_builder:form_builder_list",
+        builder_form=builder_form,
+        form_definition=form_definition,
+        sections=form_definition.sections.all().order_by("position", "title"),
+        unsectioned_fields=form_definition.fields.filter(section__isnull=True).order_by(
+            "position", "key"
+        ),
+        is_locked=is_locked,
+        mode="edit",
+    )
+    return render(request, "form_builder/settings/form_builder_form.html", context)
+
+
+@login_required(login_url="login")
+def form_section_create_view(request, form_id):
+    require_permission(can_manage_settings(request.user))
+    form_definition = get_object_or_404(Form, pk=form_id)
+    _require_form_builder_editable(form_definition)
+    if request.method == "POST":
+        section_form = FormSectionBuilderForm(request.POST)
+        section_form.instance.form = form_definition
+        if section_form.is_valid():
+            section = section_form.save(commit=False)
+            section.form = form_definition
+            section.created_by = request.user
+            section.updated_by = request.user
+            section.save()
+            _sync_builder_form(form_definition)
+            messages.success(request, "Abschnitt wurde gespeichert.")
+            return redirect("form_builder:form_builder_edit", form_definition.pk)
+        messages.error(request, "Abschnitt konnte nicht gespeichert werden.")
+    else:
+        next_position = (
+            form_definition.sections.order_by("-position")
+            .values_list("position", flat=True)
+            .first()
+            or 0
+        ) + 1
+        section_form = FormSectionBuilderForm(
+            initial={"position": next_position, "is_active": True}
+        )
+    context = build_app_context(
+        request,
+        title="Abschnitt anlegen",
+        current_url_name="form_builder:form_builder_list",
+        form_definition=form_definition,
+        section_form=section_form,
+        mode="create",
+    )
+    return render(request, "form_builder/settings/form_section_form.html", context)
+
+
+@login_required(login_url="login")
+def form_section_edit_view(request, section_id):
+    require_permission(can_manage_settings(request.user))
+    section = get_object_or_404(FormSection.objects.select_related("form"), pk=section_id)
+    _require_form_builder_editable(section.form)
+    if request.method == "POST":
+        section_form = FormSectionBuilderForm(request.POST, instance=section)
+        if section_form.is_valid():
+            section = section_form.save(commit=False)
+            section.updated_by = request.user
+            section.save()
+            _sync_builder_form(section.form)
+            messages.success(request, "Abschnitt wurde aktualisiert.")
+            return redirect("form_builder:form_builder_edit", section.form_id)
+        messages.error(request, "Bitte Eingaben pruefen.")
+    else:
+        section_form = FormSectionBuilderForm(instance=section)
+    context = build_app_context(
+        request,
+        title="Abschnitt bearbeiten",
+        current_url_name="form_builder:form_builder_list",
+        form_definition=section.form,
+        section=section,
+        section_form=section_form,
+        mode="edit",
+    )
+    return render(request, "form_builder/settings/form_section_form.html", context)
+
+
+@login_required(login_url="login")
+def form_section_delete_view(request, section_id):
+    require_permission(can_manage_settings(request.user))
+    section = get_object_or_404(FormSection.objects.select_related("form"), pk=section_id)
+    form_definition = section.form
+    _require_form_builder_editable(form_definition)
+    if request.method != "POST":
+        return redirect("form_builder:form_builder_edit", form_definition.pk)
+    form = ConfirmDeleteForm(request.POST)
+    if form.is_valid():
+        section.delete()
+        _sync_builder_form(form_definition)
+        messages.success(
+            request,
+            "Abschnitt wurde geloescht. Zugeordnete Felder bleiben ohne Abschnitt erhalten.",
+        )
+    return redirect("form_builder:form_builder_edit", form_definition.pk)
+
+
+def _swap_section_position(section: FormSection, direction: str) -> None:
+    queryset = FormSection.objects.filter(form=section.form).order_by("position", "title")
+    sections = list(queryset)
+    index = sections.index(section)
+    target_index = index - 1 if direction == "up" else index + 1
+    if target_index < 0 or target_index >= len(sections):
+        return
+    target = sections[target_index]
+    temporary_position = max(item.position for item in sections) + 1
+    with transaction.atomic():
+        FormSection.objects.filter(pk=section.pk).update(position=temporary_position)
+        FormSection.objects.filter(pk=target.pk).update(position=section.position)
+        FormSection.objects.filter(pk=section.pk).update(position=target.position)
+
+
+@login_required(login_url="login")
+def form_section_reorder_view(request, section_id, direction):
+    require_permission(can_manage_settings(request.user))
+    section = get_object_or_404(FormSection.objects.select_related("form"), pk=section_id)
+    _require_form_builder_editable(section.form)
+    if request.method == "POST" and direction in {"up", "down"}:
+        _swap_section_position(section, direction)
+        _sync_builder_form(section.form)
+    return redirect("form_builder:form_builder_edit", section.form_id)
+
+
+@login_required(login_url="login")
+def form_field_create_view(request, form_id):
+    require_permission(can_manage_settings(request.user))
+    form_definition = get_object_or_404(Form, pk=form_id)
+    _require_form_builder_editable(form_definition)
+    initial = {}
+    section_id = request.GET.get("section") or request.POST.get("section")
+    if section_id:
+        initial["section"] = section_id
+    if request.method == "POST":
+        field_form = FieldBuilderForm(request.POST, form_definition=form_definition)
+        if field_form.is_valid():
+            field = field_form.save(commit=False)
+            field.created_by = request.user
+            field.updated_by = request.user
+            field.save()
+            _sync_builder_form(form_definition)
+            messages.success(request, "Feld wurde gespeichert.")
+            return redirect("form_builder:form_builder_edit", form_definition.pk)
+        messages.error(request, "Feld konnte nicht gespeichert werden. Bitte Eingaben pruefen.")
+    else:
+        field_form = FieldBuilderForm(form_definition=form_definition, initial=initial)
+    context = build_app_context(
+        request,
+        title="Feld anlegen",
+        current_url_name="form_builder:form_builder_list",
+        form_definition=form_definition,
+        field_form=field_form,
+        mode="create",
+    )
+    return render(request, "form_builder/settings/form_field_form.html", context)
+
+
+@login_required(login_url="login")
+def form_field_edit_view(request, field_id):
+    require_permission(can_manage_settings(request.user))
+    field = get_object_or_404(Field.objects.select_related("form", "section"), pk=field_id)
+    _require_form_builder_editable(field.form)
+    if request.method == "POST":
+        field_form = FieldBuilderForm(request.POST, form_definition=field.form, instance=field)
+        if field_form.is_valid():
+            field = field_form.save(commit=False)
+            field.updated_by = request.user
+            field.save()
+            _sync_builder_form(field.form)
+            messages.success(request, "Feld wurde aktualisiert.")
+            return redirect("form_builder:form_builder_edit", field.form_id)
+        messages.error(request, "Bitte Eingaben pruefen.")
+    else:
+        field_form = FieldBuilderForm(form_definition=field.form, instance=field)
+    context = build_app_context(
+        request,
+        title="Feld bearbeiten",
+        current_url_name="form_builder:form_builder_list",
+        form_definition=field.form,
+        field=field,
+        field_form=field_form,
+        mode="edit",
+    )
+    return render(request, "form_builder/settings/form_field_form.html", context)
+
+
+@login_required(login_url="login")
+def form_field_delete_view(request, field_id):
+    require_permission(can_manage_settings(request.user))
+    field = get_object_or_404(Field.objects.select_related("form"), pk=field_id)
+    form_definition = field.form
+    _require_form_builder_editable(form_definition)
+    if request.method != "POST":
+        return redirect("form_builder:form_builder_edit", form_definition.pk)
+    form = ConfirmDeleteForm(request.POST)
+    if form.is_valid():
+        field.delete()
+        _sync_builder_form(form_definition)
+        messages.success(request, "Feld wurde geloescht.")
+    return redirect("form_builder:form_builder_edit", form_definition.pk)
+
+
+def _swap_field_position(field: Field, direction: str) -> None:
+    queryset = Field.objects.filter(form=field.form, section=field.section).order_by(
+        "position", "key"
+    )
+    fields = list(queryset)
+    index = fields.index(field)
+    target_index = index - 1 if direction == "up" else index + 1
+    if target_index < 0 or target_index >= len(fields):
+        return
+    target = fields[target_index]
+    positions = list(Field.objects.filter(form=field.form).values_list("position", flat=True))
+    temporary_position = (max(positions) if positions else 0) + 1
+    with transaction.atomic():
+        Field.objects.filter(pk=field.pk).update(position=temporary_position)
+        Field.objects.filter(pk=target.pk).update(position=field.position)
+        Field.objects.filter(pk=field.pk).update(position=target.position)
+
+
+@login_required(login_url="login")
+def form_field_reorder_view(request, field_id, direction):
+    require_permission(can_manage_settings(request.user))
+    field = get_object_or_404(Field.objects.select_related("form", "section"), pk=field_id)
+    _require_form_builder_editable(field.form)
+    if request.method == "POST" and direction in {"up", "down"}:
+        _swap_field_position(field, direction)
+        _sync_builder_form(field.form)
+    return redirect("form_builder:form_builder_edit", field.form_id)

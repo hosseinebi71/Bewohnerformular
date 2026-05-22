@@ -1,0 +1,17 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="settings-layout">
+  <aside class="settings-menu surface">{% include "form_builder/settings/form_builder_menu.html" %}</aside>
+  <section class="surface settings-content form-card">
+    <div class="panel-head"><div><p class="eyebrow">{{ form_definition.title }}</p><h2>{% if mode == 'edit' %}Abschnitt bearbeiten{% else %}Abschnitt anlegen{% endif %}</h2></div></div>
+    <form class="settings-form compact-form" method="post">{% csrf_token %}
+      <div class="field-row"><label>{{ section_form.position.label }}</label>{{ section_form.position }}{{ section_form.position.errors }}</div>
+      <div class="field-row"><label>{{ section_form.title.label }}</label>{{ section_form.title }}{{ section_form.title.errors }}</div>
+      <div class="field-row"><label>{{ section_form.description.label }}</label>{{ section_form.description }}{{ section_form.description.errors }}</div>
+      <div class="field-row field-row-checks"><label>Optionen</label><span class="inline-checks">{{ section_form.is_collapsible }} Einklappbar {{ section_form.is_active }} Aktiv</span></div>
+      {% if section_form.non_field_errors %}<div class="message error">{{ section_form.non_field_errors }}</div>{% endif %}
+      <div class="actionbar"><a class="button ghost" href="{% url 'form_builder:form_builder_edit' form_definition.pk %}">Zurück</a><button class="button" type="submit">Speichern</button></div>
+    </form>
+  </section>
+</section>
+{% endblock %}

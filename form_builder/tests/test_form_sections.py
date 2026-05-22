@@ -12,7 +12,9 @@ from form_builder.services import build_entry_form, get_form_schema
 class FormSectionTests(TestCase):
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user(username="section_user", password="pass", is_staff=True)
+        self.user = User.objects.create_user(
+            username="section_user", password="pass", is_staff=True
+        )
         self.form = Form.objects.create(key="section-test", version=1, title="Section Test")
         self.bewohner = Bewohner.objects.create(
             resident_number="SECT-001",
@@ -68,7 +70,13 @@ class FormSectionTests(TestCase):
 
     def test_dynamic_entry_form_exposes_sectioned_bound_field_groups(self):
         section = FormSection.objects.create(form=self.form, title="Kontaktdaten", position=1)
-        self._field(key="email", label="E-Mail", position=1, section=section, field_type=Field.FieldType.EMAIL)
+        self._field(
+            key="email",
+            label="E-Mail",
+            position=1,
+            section=section,
+            field_type=Field.FieldType.EMAIL,
+        )
         self._field(key="note", label="Notiz", position=2, field_type=Field.FieldType.TEXTAREA)
         self.form.sync_schema()
 
@@ -84,7 +92,13 @@ class FormSectionTests(TestCase):
 
     def test_entry_snapshot_preserves_section_structure(self):
         section = FormSection.objects.create(form=self.form, title="Info", position=1)
-        self._field(key="notes", label="Notizen", position=1, section=section, field_type=Field.FieldType.TEXTAREA)
+        self._field(
+            key="notes",
+            label="Notizen",
+            position=1,
+            section=section,
+            field_type=Field.FieldType.TEXTAREA,
+        )
         self.form.sync_schema()
 
         entry = FormEntry.objects.create(

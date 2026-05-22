@@ -6,6 +6,7 @@
     <a class="active" href="{% url 'form_builder:settings_index' %}">Übersicht</a>
     <a href="{% url 'form_builder:email_target_list' %}">E-Mail-Ziele</a>
     <a href="{% url 'form_builder:schedule_list' %}">Zeitpläne</a>
+    <a href="{% url 'form_builder:form_builder_list' %}">Formular-Builder</a>
     <a href="{% url 'form_builder:staff_access_list' %}">Mitarbeiter</a>
     <a href="{% url 'form_builder:profile' %}">Profil</a>
     <a href="/admin/">Admin</a>
@@ -22,6 +23,7 @@
         {% if can_manage_settings %}
           <a class="button compact" href="{% url 'form_builder:email_target_create' %}">+ E-Mail</a>
           <a class="button ghost compact" href="{% url 'form_builder:schedule_create' %}">+ Zeitplan</a>
+          <a class="button ghost compact" href="{% url 'form_builder:form_builder_create' %}">+ Formular</a>
           <a class="button ghost compact" href="{% url 'form_builder:staff_access_create' %}">+ Mitarbeiter</a>
         {% endif %}
       </div>
@@ -30,7 +32,7 @@
     <section class="settings-summary-grid">
       <a class="settings-summary-card surface" href="{% url 'form_builder:email_target_list' %}"><strong>{{ active_recipients }}</strong><span>E-Mail-Ziele</span></a>
       <a class="settings-summary-card surface" href="{% url 'form_builder:schedule_list' %}"><strong>{{ active_schedules }}</strong><span>Zeitpläne</span></a>
-      <a class="settings-summary-card surface" href="{% url 'form_builder:form_list' %}"><strong>{{ available_forms }}</strong><span>Formulare</span></a>
+      <a class="settings-summary-card surface" href="{% url 'form_builder:form_builder_list' %}"><strong>{{ available_forms }}</strong><span>Formular-Builder</span></a>
       <a class="settings-summary-card surface" href="{% url 'form_builder:draft_list' %}"><strong>{{ pending_outbox }}</strong><span>Offen</span></a>
     </section>
 

@@ -20,16 +20,7 @@
     {% if form_definition.key == "meldung-besonderes-vorkommnis" %}
       {% include "form_builder/partials/bv_editor_fields.html" %}
     {% else %}
-      <div class="form-grid government-form">
-        {% for field in entry_form %}
-          <div class="field-row">
-            <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span>*</span>{% endif %}</label>
-            {{ field }}
-            {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-            {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
-          </div>
-        {% endfor %}
-      </div>
+      {% include "form_builder/partials/entry_form_fields.html" %}
     {% endif %}
     <div class="actionbar sticky-actions">
       <span class="save-hint">Vorschau öffnet die aktuellen Eingaben im neuen Tab. Gesendet wird erst nach Freigabe.</span>

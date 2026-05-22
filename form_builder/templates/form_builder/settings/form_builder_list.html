@@ -1,0 +1,51 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="settings-layout">
+  <aside class="settings-menu surface">
+    {% include "form_builder/settings/form_builder_menu.html" %}
+  </aside>
+
+  <section class="settings-content">
+    <div class="settings-header surface">
+      <div>
+        <p class="eyebrow">Formular-Builder</p>
+        <h2>Digitale Formulare verwalten</h2>
+        <p>Formulare, Abschnitte und Felder serverseitig pflegen. Veröffentlichte Formulare bleiben geschützt.</p>
+      </div>
+      <div class="button-row">
+        <a class="button compact" href="{% url 'form_builder:form_builder_create' %}">+ Formular</a>
+      </div>
+    </div>
+
+    <section class="surface clean-panel" data-table-shell>
+      <div class="commandbar">
+        <input class="searchbox" type="search" placeholder="Formular, Key oder Beschreibung suchen" data-table-search>
+        <select class="sort-select" data-table-sort aria-label="Sortieren">
+          <option value="title-asc">Formular A-Z</option>
+          <option value="version-desc">Neueste Version</option>
+        </select>
+        <span class="table-count" data-table-count></span>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table" data-table>
+          <thead><tr><th>Formular</th><th>Status</th><th>Struktur</th><th class="table-action">Aktion</th></tr></thead>
+          <tbody>
+          {% for item in forms %}
+            <tr data-row data-title="{{ item.title }}" data-version="{{ item.version }}" data-search="{{ item.title }} {{ item.key }} {{ item.description }} {{ item.status }}">
+              <td><strong>{{ item.title }}</strong><small>{{ item.key }} · v{{ item.version }}{% if item.org_unit %} · {{ item.org_unit }}{% endif %}</small></td>
+              <td><span class="badge {% if item.status == 'published' %}success{% else %}muted{% endif %}">{{ item.get_status_display }}</span></td>
+              <td><small>{{ item.sections.count }} Abschnitte · {{ item.fields.count }} Felder</small></td>
+              <td class="table-action action-stack">
+                <a class="button ghost" href="{% url 'form_builder:form_builder_edit' item.pk %}">Öffnen</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr data-empty><td colspan="4" class="empty-cell">Noch keine Formulare vorhanden.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+</section>
+{% endblock %}

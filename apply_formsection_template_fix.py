@@ -1,14 +1,16 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
 ROOT = Path.cwd()
 
-PARTIAL_PATH = ROOT / 'form_builder' / 'templates' / 'form_builder' / 'partials' / 'entry_form_fields.html'
-CREATE_PATH = ROOT / 'form_builder' / 'templates' / 'form_builder' / 'entry_create.html'
-EDIT_PATH = ROOT / 'form_builder' / 'templates' / 'form_builder' / 'entry_edit.html'
-CSS_PATH = ROOT / 'form_builder' / 'static' / 'form_builder' / 'app.css'
+PARTIAL_PATH = (
+    ROOT / "form_builder" / "templates" / "form_builder" / "partials" / "entry_form_fields.html"
+)
+CREATE_PATH = ROOT / "form_builder" / "templates" / "form_builder" / "entry_create.html"
+EDIT_PATH = ROOT / "form_builder" / "templates" / "form_builder" / "entry_edit.html"
+CSS_PATH = ROOT / "form_builder" / "static" / "form_builder" / "app.css"
 
-PARTIAL = '''{% if entry_form.sectioned_bound_field_groups %}
+PARTIAL = """{% if entry_form.sectioned_bound_field_groups %}
   {% for group in entry_form.sectioned_bound_field_groups %}
     {% if group.section %}
       <fieldset class="form-section{% if group.section.is_collapsible %} is-collapsible{% endif %}"{% if group.section.is_collapsible %} data-collapsible="true"{% endif %}>
@@ -50,9 +52,9 @@ PARTIAL = '''{% if entry_form.sectioned_bound_field_groups %}
     {% endfor %}
   </div>
 {% endif %}
-'''
+"""
 
-OLD_BLOCK = '''      <div class="form-grid government-form">
+OLD_BLOCK = """      <div class="form-grid government-form">
         {% for field in entry_form %}
           <div class="field-row">
             <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span>*</span>{% endif %}</label>
@@ -61,11 +63,11 @@ OLD_BLOCK = '''      <div class="form-grid government-form">
             {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
           </div>
         {% endfor %}
-      </div>'''
+      </div>"""
 
 NEW_INCLUDE = '      {% include "form_builder/partials/entry_form_fields.html" %}'
 
-CSS = '''
+CSS = """
 
 /* dynamic form sections */
 .form-section {
@@ -98,13 +100,13 @@ CSS = '''
 .section-fields {
   border-top: 1px solid #edf2f7;
 }
-'''
+"""
 
 
 def replace_template(path: Path) -> None:
     if not path.exists():
         raise SystemExit(f"Missing template: {path}")
-    text = path.read_text(encoding='utf-8')
+    text = path.read_text(encoding="utf-8")
     if NEW_INCLUDE in text:
         print(f"[OK] already patched {path}")
         return
@@ -112,23 +114,26 @@ def replace_template(path: Path) -> None:
         raise SystemExit(
             f"Could not find the old flat field block in {path}. Open the file and replace the form-grid loop manually."
         )
-    path.write_text(text.replace(OLD_BLOCK, NEW_INCLUDE, 1), encoding='utf-8')
+    path.write_text(text.replace(OLD_BLOCK, NEW_INCLUDE, 1), encoding="utf-8")
     print(f"[OK] patched {path}")
 
 
 def main() -> int:
-    if not (ROOT / 'manage.py').exists():
-        print('Run this from the project root, e.g. C:\\Users\\hosse\\Bewohnerformular', file=sys.stderr)
+    if not (ROOT / "manage.py").exists():
+        print(
+            "Run this from the project root, e.g. C:\\Users\\hosse\\Bewohnerformular",
+            file=sys.stderr,
+        )
         return 2
     PARTIAL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    PARTIAL_PATH.write_text(PARTIAL, encoding='utf-8')
+    PARTIAL_PATH.write_text(PARTIAL, encoding="utf-8")
     print(f"[OK] wrote {PARTIAL_PATH}")
     replace_template(CREATE_PATH)
     replace_template(EDIT_PATH)
     if CSS_PATH.exists():
-        css = CSS_PATH.read_text(encoding='utf-8')
-        if 'dynamic form sections' not in css:
-            CSS_PATH.write_text(css.rstrip() + CSS, encoding='utf-8')
+        css = CSS_PATH.read_text(encoding="utf-8")
+        if "dynamic form sections" not in css:
+            CSS_PATH.write_text(css.rstrip() + CSS, encoding="utf-8")
             print(f"[OK] appended CSS to {CSS_PATH}")
         else:
             print(f"[OK] CSS already present in {CSS_PATH}")
@@ -136,5 +141,6 @@ def main() -> int:
         print(f"[WARN] CSS file not found: {CSS_PATH}")
     return 0
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     raise SystemExit(main())
