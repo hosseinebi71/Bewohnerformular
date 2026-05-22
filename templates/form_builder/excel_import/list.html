@@ -1,0 +1,29 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Einstellungen</p>
+      <h2>Excel-Importe</h2>
+      <p>Excel-Dateien analysieren, Mapping bearbeiten und daraus Formularentwuerfe erzeugen.</p>
+    </div>
+    {% if can_manage_settings %}<a class="button" href="{% url 'form_builder:excel_import_upload' %}">Excel hochladen</a>{% endif %}
+  </div>
+  <table class="data-table">
+    <thead><tr><th>Datei</th><th>Status</th><th>Benutzer</th><th>Datum</th><th></th></tr></thead>
+    <tbody>
+      {% for job in jobs %}
+        <tr>
+          <td>{{ job.original_filename }}</td>
+          <td><span class="badge">{{ job.get_status_display }}</span></td>
+          <td>{{ job.uploaded_by|default:"-" }}</td>
+          <td>{{ job.created_at|date:"d.m.Y H:i" }}</td>
+          <td><a class="link" href="{% url 'form_builder:excel_import_detail' job.id %}">oeffnen</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">Noch keine Excel-Importe vorhanden.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

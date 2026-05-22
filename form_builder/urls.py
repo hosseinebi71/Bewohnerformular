@@ -7,6 +7,13 @@ from .conditional_builder_views import (
     conditional_rule_edit_view,
     conditional_rule_list_view,
 )
+from .excel_import_views import (
+    excel_import_detail_view,
+    excel_import_generate_view,
+    excel_import_list_view,
+    excel_import_mapping_view,
+    excel_import_upload_view,
+)
 from .repeatable_builder_views import (
     repeatable_column_create_view,
     repeatable_column_delete_view,
@@ -87,7 +94,9 @@ urlpatterns = [
     path("formulare/eintraege/<uuid:entry_id>/bearbeiten/", entry_edit_view, name="entry_edit"),
     path("formulare/eintraege/<uuid:entry_id>/speichern/", entry_save_view, name="entry_save"),
     path(
-        "formulare/eintraege/<uuid:entry_id>/schicken/", entry_send_now_view, name="entry_send_now"
+        "formulare/eintraege/<uuid:entry_id>/schicken/",
+        entry_send_now_view,
+        name="entry_send_now",
     ),
     path(
         "formulare/eintraege/<uuid:entry_id>/validieren/",
@@ -96,14 +105,20 @@ urlpatterns = [
     ),
     path("formulare/eintraege/<uuid:entry_id>/review/", entry_review_view, name="entry_review"),
     path(
-        "formulare/eintraege/<uuid:entry_id>/freigeben/", entry_approve_view, name="entry_approve"
+        "formulare/eintraege/<uuid:entry_id>/freigeben/",
+        entry_approve_view,
+        name="entry_approve",
     ),
     path(
-        "formulare/eintraege/<uuid:entry_id>/zurueckweisen/", entry_reject_view, name="entry_reject"
+        "formulare/eintraege/<uuid:entry_id>/zurueckweisen/",
+        entry_reject_view,
+        name="entry_reject",
     ),
     path("formulare/eintraege/<uuid:entry_id>/ausgangskorb/", entry_queue_view, name="entry_queue"),
     path(
-        "formulare/eintraege/<uuid:entry_id>/pdf/", entry_pdf_preview_view, name="entry_pdf_preview"
+        "formulare/eintraege/<uuid:entry_id>/pdf/",
+        entry_pdf_preview_view,
+        name="entry_pdf_preview",
     ),
     path(
         "formulare/eintraege/<uuid:entry_id>/pdf/live/",
@@ -134,6 +149,27 @@ urlpatterns = [
     path("formulare/archiv/", archive_list_view, name="archive_list"),
     path("profil/", profile_view, name="profile"),
     path("einstellungen/", settings_index_view, name="settings_index"),
+    path("einstellungen/excel-importe/", excel_import_list_view, name="excel_import_list"),
+    path(
+        "einstellungen/excel-importe/hochladen/",
+        excel_import_upload_view,
+        name="excel_import_upload",
+    ),
+    path(
+        "einstellungen/excel-importe/<uuid:job_id>/",
+        excel_import_detail_view,
+        name="excel_import_detail",
+    ),
+    path(
+        "einstellungen/excel-importe/<uuid:job_id>/mapping/",
+        excel_import_mapping_view,
+        name="excel_import_mapping",
+    ),
+    path(
+        "einstellungen/excel-importe/<uuid:job_id>/generieren/",
+        excel_import_generate_view,
+        name="excel_import_generate",
+    ),
     path("einstellungen/form-builder/", form_builder_list_view, name="form_builder_list"),
     path("einstellungen/form-builder/neu/", form_builder_create_view, name="form_builder_create"),
     path(

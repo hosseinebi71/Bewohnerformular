@@ -1,0 +1,42 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="detail-layout">
+  <div class="surface panel">
+    <div class="panel-head">
+      <div>
+        <p class="eyebrow">Excel-Import</p>
+        <h2>{{ import_job.original_filename }}</h2>
+        <p>Status: {{ import_job.get_status_display }}</p>
+      </div>
+      <span class="badge">{{ import_job.get_status_display }}</span>
+    </div>
+    {% if import_job.error_message %}<p class="error">{{ import_job.error_message }}</p>{% endif %}
+    <h3>Erkannte Blaetter</h3>
+    <table class="data-table">
+      <thead><tr><th>#</th><th>Blatt</th><th>Bereich</th><th>Zeilen</th><th>Spalten</th></tr></thead>
+      <tbody>
+        {% for sheet in sheets %}
+          <tr><td>{{ sheet.sheet_index }}</td><td>{{ sheet.name }}</td><td>{{ sheet.used_range|default:"-" }}</td><td>{{ sheet.row_count }}</td><td>{{ sheet.column_count }}</td></tr>
+        {% empty %}
+          <tr><td colspan="5">Keine analysierbaren Blaetter gefunden.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if import_job.generated_form_ids %}
+      <h3>Generierte Formularentwuerfe</h3>
+      <p>{{ import_job.generated_form_ids|join:", " }}</p>
+    {% endif %}
+  </div>
+  <aside class="surface panel actions-panel">
+    <p class="eyebrow">Aktionen</p>
+    {% if can_manage_settings %}
+      <a class="button wide" href="{% url 'form_builder:excel_import_mapping' import_job.id %}">Mapping bearbeiten</a>
+      <form method="post" action="{% url 'form_builder:excel_import_generate' import_job.id %}" onsubmit="return confirm('Formularentwuerfe aus diesem Mapping erzeugen?');">
+        {% csrf_token %}
+        <button class="button ghost wide" type="submit">Entwuerfe erzeugen</button>
+      </form>
+    {% endif %}
+    <a class="link" href="{% url 'form_builder:excel_import_list' %}">Alle Importe</a>
+  </aside>
+</section>
+{% endblock %}

@@ -101,7 +101,9 @@ def _has_uploaded_file(uploaded_files, field_key: str) -> bool:
     return False
 
 
-def _field_has_value(*, field_definition: dict, cleaned_data: dict, uploaded_files=None, form_entry=None) -> bool:
+def _field_has_value(
+    *, field_definition: dict, cleaned_data: dict, uploaded_files=None, form_entry=None
+) -> bool:
     key = field_definition.get("key")
     if not key:
         return False

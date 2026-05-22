@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from form_builder.conditional_models import ConditionalRule
 from form_builder.conditional_services import apply_conditional_rules_to_form
-from form_builder.models import Bewohner, Field, Form, FormEntry
+from form_builder.models import Bewohner, Field, Form
 from form_builder.services import build_entry_form, create_form_entry_from_validated
 
 
@@ -146,5 +147,5 @@ class ConditionalRuleTests(TestCase):
             action=ConditionalRule.Action.SHOW,
             target_field=self.description,
         )
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             rule.full_clean()

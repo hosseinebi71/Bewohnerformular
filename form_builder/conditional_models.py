@@ -3,7 +3,14 @@ from __future__ import annotations
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from .models import Field, Form, FormSection, TimeStampedModel, UUIDPrimaryKeyModel, UserStampedModel
+from .models import (
+    Field,
+    Form,
+    FormSection,
+    TimeStampedModel,
+    UserStampedModel,
+    UUIDPrimaryKeyModel,
+)
 
 
 class ConditionalRule(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
@@ -86,7 +93,9 @@ class ConditionalRule(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
             errors["target_field"] = "Bitte genau ein Ziel waehlen: Feld oder Abschnitt."
             errors["target_section"] = "Bitte genau ein Ziel waehlen: Feld oder Abschnitt."
         if self.target_field_id and self.source_field_id == self.target_field_id:
-            errors["target_field"] = "Ein Feld darf nicht gleichzeitig Quelle und Ziel derselben Regel sein."
+            errors["target_field"] = (
+                "Ein Feld darf nicht gleichzeitig Quelle und Ziel derselben Regel sein."
+            )
         if self.operator in {self.Operator.IS_EMPTY, self.Operator.IS_NOT_EMPTY} and self.value:
             errors["value"] = "Bei Leer-Operatoren darf kein Vergleichswert gesetzt werden."
         if self.operator in {self.Operator.EQUALS, self.Operator.NOT_EQUALS} and self.value == "":

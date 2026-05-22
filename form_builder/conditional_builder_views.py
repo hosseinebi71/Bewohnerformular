@@ -57,7 +57,9 @@ def conditional_rule_create_view(request, form_id):
             return redirect("form_builder:conditional_rule_list", form_id=form_definition.pk)
         messages.error(request, "Bitte Eingaben pruefen.")
     else:
-        rule_form = ConditionalRuleForm(form_definition=form_definition, initial={"is_active": True})
+        rule_form = ConditionalRuleForm(
+            form_definition=form_definition, initial={"is_active": True}
+        )
     return render(
         request,
         "form_builder/settings/conditional_rule_form.html",
@@ -76,7 +78,9 @@ def conditional_rule_create_view(request, form_id):
 def conditional_rule_edit_view(request, rule_id):
     require_permission(can_manage_settings(request.user))
     rule = get_object_or_404(
-        ConditionalRule.objects.select_related("form", "source_field", "target_field", "target_section"),
+        ConditionalRule.objects.select_related(
+            "form", "source_field", "target_field", "target_section"
+        ),
         pk=rule_id,
     )
     form_definition = rule.form

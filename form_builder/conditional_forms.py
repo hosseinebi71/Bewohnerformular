@@ -37,7 +37,9 @@ class ConditionalRuleForm(forms.ModelForm):
     def __init__(self, *args, form_definition, **kwargs):
         self.form_definition = form_definition
         super().__init__(*args, **kwargs)
-        fields = Field.objects.filter(form=form_definition, is_active=True).order_by("position", "key")
+        fields = Field.objects.filter(form=form_definition, is_active=True).order_by(
+            "position", "key"
+        )
         sections = FormSection.objects.filter(form=form_definition, is_active=True).order_by(
             "position", "title"
         )

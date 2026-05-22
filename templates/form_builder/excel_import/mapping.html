@@ -1,0 +1,36 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface form-panel">
+  <p class="eyebrow">Excel-Mapping</p>
+  <h2>{{ import_job.original_filename }}</h2>
+  <p>Waehle Blaetter und pruefe die automatisch erkannte Struktur. Es werden nur Entwuerfe erzeugt.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ mapping_form.non_field_errors }}
+    <div class="field-row">
+      {{ mapping_form.mode.label_tag }}
+      {{ mapping_form.mode }}
+      {% for error in mapping_form.mode.errors %}<small class="error">{{ error }}</small>{% endfor %}
+    </div>
+    <div class="field-row">
+      <label>{{ mapping_form.selected_sheets.label }}</label>
+      {{ mapping_form.selected_sheets }}
+      {% for error in mapping_form.selected_sheets.errors %}<small class="error">{{ error }}</small>{% endfor %}
+    </div>
+    <div class="field-row">
+      {{ mapping_form.mapping_json.label_tag }}
+      {{ mapping_form.mapping_json }}
+      {% if mapping_form.mapping_json.help_text %}<small>{{ mapping_form.mapping_json.help_text }}</small>{% endif %}
+      {% for error in mapping_form.mapping_json.errors %}<small class="error">{{ error }}</small>{% endfor %}
+    </div>
+    <details class="surface subtle-panel">
+      <summary>Analyse anzeigen</summary>
+      <pre>{{ import_job.analysis_result }}</pre>
+    </details>
+    <div class="actionbar sticky-actions">
+      <a class="button ghost" href="{% url 'form_builder:excel_import_detail' import_job.id %}">Zurueck</a>
+      <button class="button" type="submit">Mapping speichern</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
