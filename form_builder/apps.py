@@ -9,6 +9,7 @@ class FormBuilderConfig(AppConfig):
     def ready(self):
         # Keep extension models loaded for admin, permission checks and migrations while
         # avoiding a large refactor of the existing monolithic models.py file.
+        import form_builder.action_item_models  # noqa: F401
         import form_builder.attachment_models  # noqa: F401
         import form_builder.conditional_models  # noqa: F401
         import form_builder.docx_template_models  # noqa: F401

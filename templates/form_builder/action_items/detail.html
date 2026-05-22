@@ -1,0 +1,28 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface">
+  <div class="document-titlebar">
+    <div>
+      <p class="eyebrow">Massnahme</p>
+      <h2>{{ item.title }}</h2>
+      <p>{{ item.source_entry.form.title }} · {{ item.source_entry.bewohner }}</p>
+    </div>
+    <div class="title-actions">
+      <a class="button ghost" href="{% url 'form_builder:entry_detail' item.source_entry.id %}">Vorgang</a>
+      <a class="button ghost" href="{% url 'form_builder:action_item_list' %}">Zurueck</a>
+    </div>
+  </div>
+  <dl class="detail-list">
+    <dt>Status</dt><dd>{{ item.get_status_display }}</dd>
+    <dt>Prioritaet</dt><dd>{{ item.get_priority_display }}</dd>
+    <dt>Faellig</dt><dd>{{ item.due_at|default:"-" }}</dd>
+    <dt>Verantwortlich</dt><dd>{% if item.assigned_to %}{{ item.assigned_to }}{% else %}{{ item.assigned_to_label|default:"-" }}{% endif %}</dd>
+    <dt>Beschreibung</dt><dd>{{ item.description|linebreaksbr|default:"-" }}</dd>
+  </dl>
+  <form method="post" action="{% url 'form_builder:action_item_update' item.id %}" class="form-grid government-form">
+    {% csrf_token %}
+    {{ status_form.as_p }}
+    <div class="actionbar"><button class="button" type="submit">Aktualisieren</button></div>
+  </form>
+</section>
+{% endblock %}

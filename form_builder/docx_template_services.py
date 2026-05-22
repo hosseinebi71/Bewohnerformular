@@ -21,7 +21,9 @@ def _require_docx():
     try:
         from docx import Document
     except ImportError as exc:  # pragma: no cover - dependency guidance only
-        raise ValidationError("python-docx ist nicht installiert. Bitte `poetry add python-docx` ausfuehren.") from exc
+        raise ValidationError(
+            "python-docx ist nicht installiert. Bitte `poetry add python-docx` ausfuehren."
+        ) from exc
     return Document
 
 
@@ -75,7 +77,9 @@ def analyze_and_store_docx_template(template: DOCXTemplate) -> DOCXTemplate:
     return template
 
 
-def create_docx_template(*, form, uploaded_file, title: str, description: str = "", user=None) -> DOCXTemplate:
+def create_docx_template(
+    *, form, uploaded_file, title: str, description: str = "", user=None
+) -> DOCXTemplate:
     validate_docx_template_file(uploaded_file)
     analysis = extract_docx_placeholders(uploaded_file)
     template = DOCXTemplate.objects.create(
@@ -84,7 +88,10 @@ def create_docx_template(*, form, uploaded_file, title: str, description: str = 
         description=description,
         template_file=uploaded_file,
         original_filename=getattr(uploaded_file, "name", "template.docx")[:255],
-        content_type=(getattr(uploaded_file, "content_type", "") or DOCXTemplate._meta.get_field("content_type").default),
+        content_type=(
+            getattr(uploaded_file, "content_type", "")
+            or DOCXTemplate._meta.get_field("content_type").default
+        ),
         file_size=int(getattr(uploaded_file, "size", 0) or 0),
         placeholder_keys=analysis["placeholders"],
         analysis=analysis,
@@ -195,14 +202,18 @@ def get_default_docx_template(form) -> DOCXTemplate | None:
     )
 
 
-def generate_docx_document(*, form_entry: FormEntry, template: DOCXTemplate | None = None, user=None) -> PDFDocument:
+def generate_docx_document(
+    *, form_entry: FormEntry, template: DOCXTemplate | None = None, user=None
+) -> PDFDocument:
     template = template or get_default_docx_template(form_entry.form)
     if not template:
         raise ValidationError("Fuer dieses Formular ist keine aktive DOCX-Vorlage hinterlegt.")
     docx_bytes = fill_docx_template_bytes(template=template, form_entry=form_entry)
     sha256 = hashlib.sha256(docx_bytes).hexdigest()
     now = timezone.now()
-    storage_key = f"docx_documents/{form_entry.pk}/{now.strftime('%Y%m%d_%H%M%S')}_{sha256[:12]}.docx"
+    storage_key = (
+        f"docx_documents/{form_entry.pk}/{now.strftime('%Y%m%d_%H%M%S')}_{sha256[:12]}.docx"
+    )
     target_path = (get_private_document_root() / storage_key).resolve()
     target_path.parent.mkdir(parents=True, exist_ok=True)
     target_path.write_bytes(docx_bytes)
@@ -237,6 +248,10 @@ def generate_docx_document(*, form_entry: FormEntry, template: DOCXTemplate | No
         form=form_entry.form,
         form_entry=form_entry,
         message="DOCX-Dokument wurde aus Vorlage erzeugt und privat gespeichert.",
-        metadata={"template_id": str(template.pk), "document_id": str(document.pk), "sha256": sha256},
+        metadata={
+            "template_id": str(template.pk),
+            "document_id": str(document.pk),
+            "sha256": sha256,
+        },
     )
     return document

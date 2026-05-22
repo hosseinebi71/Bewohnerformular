@@ -21,22 +21,85 @@ class Migration(migrations.Migration):
             fields=[
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
+                ),
                 ("title", models.CharField(max_length=255)),
                 ("description", models.TextField(blank=True)),
-                ("template_file", models.FileField(max_length=500, upload_to=form_builder.docx_template_models.docx_template_upload_to)),
+                (
+                    "template_file",
+                    models.FileField(
+                        max_length=500,
+                        upload_to=form_builder.docx_template_models.docx_template_upload_to,
+                    ),
+                ),
                 ("original_filename", models.CharField(max_length=255)),
-                ("content_type", models.CharField(default="application/vnd.openxmlformats-officedocument.wordprocessingml.document", max_length=120)),
+                (
+                    "content_type",
+                    models.CharField(
+                        default="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        max_length=120,
+                    ),
+                ),
                 ("file_size", models.PositiveBigIntegerField(default=0)),
                 ("placeholder_keys", models.JSONField(blank=True, default=list)),
                 ("analysis", models.JSONField(blank=True, default=dict)),
-                ("status", models.CharField(choices=[("active", "Aktiv"), ("draft", "Entwurf"), ("retired", "Stillgelegt")], db_index=True, default="draft", max_length=16)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("active", "Aktiv"),
+                            ("draft", "Entwurf"),
+                            ("retired", "Stillgelegt"),
+                        ],
+                        db_index=True,
+                        default="draft",
+                        max_length=16,
+                    ),
+                ),
                 ("is_default", models.BooleanField(default=False)),
                 ("activated_at", models.DateTimeField(blank=True, null=True)),
-                ("created_by", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="form_builder_docxtemplate_created", to=settings.AUTH_USER_MODEL)),
-                ("updated_by", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="form_builder_docxtemplate_updated", to=settings.AUTH_USER_MODEL)),
-                ("uploaded_by", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="docx_templates_uploaded", to=settings.AUTH_USER_MODEL)),
-                ("form", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="docx_templates", to="form_builder.form")),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="form_builder_docxtemplate_created",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "updated_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="form_builder_docxtemplate_updated",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "uploaded_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="docx_templates_uploaded",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "form",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="docx_templates",
+                        to="form_builder.form",
+                    ),
+                ),
             ],
             options={
                 "verbose_name": "DOCX-Vorlage",
@@ -46,10 +109,14 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="docxtemplate",
-            index=models.Index(fields=["form", "status", "is_default"], name="form_builde_form_id_52e4c1_idx"),
+            index=models.Index(
+                fields=["form", "status", "is_default"], name="form_builde_form_id_52e4c1_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="docxtemplate",
-            index=models.Index(fields=["uploaded_by", "created_at"], name="form_builde_uploade_9858d6_idx"),
+            index=models.Index(
+                fields=["uploaded_by", "created_at"], name="form_builde_uploade_9858d6_idx"
+            ),
         ),
     ]

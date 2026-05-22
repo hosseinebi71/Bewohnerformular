@@ -1,0 +1,33 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface">
+  <div class="document-titlebar">
+    <div>
+      <p class="eyebrow">Form Builder</p>
+      <h2>Massnahmen-Regeln</h2>
+      <p>{{ form_definition.title }}</p>
+    </div>
+    <div class="title-actions">
+      <a class="button" href="{% url 'form_builder:action_rule_create' form_definition.id %}">Regel anlegen</a>
+      <a class="button ghost" href="{% url 'form_builder:form_builder_edit' form_definition.id %}">Zurueck</a>
+    </div>
+  </div>
+  <table class="data-table">
+    <thead><tr><th>Name</th><th>Quelle</th><th>Operator</th><th>Prioritaet</th><th>Aktiv</th><th></th></tr></thead>
+    <tbody>
+      {% for rule in rules %}
+        <tr>
+          <td>{{ rule.name }}</td>
+          <td>{% if rule.source_group_key %}{{ rule.source_group_key }}.{{ rule.source_column_key }}{% else %}{{ rule.source_field.key|default:rule.source_field_key }}{% endif %}</td>
+          <td>{{ rule.get_operator_display }}</td>
+          <td>{{ rule.get_priority_display }}</td>
+          <td>{{ rule.is_active|yesno:"Ja,Nein" }}</td>
+          <td><a href="{% url 'form_builder:action_rule_edit' rule.id %}">Bearbeiten</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">Keine Regeln vorhanden.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

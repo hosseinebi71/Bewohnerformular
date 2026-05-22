@@ -1,0 +1,31 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface">
+  <div class="document-titlebar">
+    <div>
+      <p class="eyebrow">Aufgaben</p>
+      <h2>Massnahmen</h2>
+      <p>Offene und abgeschlossene Massnahmen aus Formularvorgaengen.</p>
+    </div>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr><th>Titel</th><th>Formular</th><th>Bewohner</th><th>Status</th><th>Faellig</th><th>Verantwortlich</th></tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+        <tr>
+          <td><a href="{% url 'form_builder:action_item_detail' item.id %}">{{ item.title }}</a></td>
+          <td>{{ item.source_entry.form.title }}</td>
+          <td>{{ item.source_entry.bewohner }}</td>
+          <td>{{ item.get_status_display }}</td>
+          <td>{{ item.due_at|default:"-" }}</td>
+          <td>{% if item.assigned_to %}{{ item.assigned_to }}{% else %}{{ item.assigned_to_label|default:"-" }}{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">Keine Massnahmen gefunden.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

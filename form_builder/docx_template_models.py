@@ -9,7 +9,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.text import get_valid_filename
 
-from .models import Form, TimeStampedModel, UUIDPrimaryKeyModel, UserStampedModel
+from .models import Form, TimeStampedModel, UserStampedModel, UUIDPrimaryKeyModel
 
 DOCX_MAX_TEMPLATE_SIZE = 10 * 1024 * 1024
 DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -26,7 +26,9 @@ def validate_docx_template_file(uploaded_file) -> None:
     name = getattr(uploaded_file, "name", "") or ""
     suffix = os.path.splitext(name.lower())[1]
     if suffix != ".docx" or suffix in REJECTED_DOCX_SUFFIXES:
-        raise ValidationError("Bitte eine sichere .docx-Datei hochladen. .doc, .docm und Makrodateien sind nicht erlaubt.")
+        raise ValidationError(
+            "Bitte eine sichere .docx-Datei hochladen. .doc, .docm und Makrodateien sind nicht erlaubt."
+        )
     size = int(getattr(uploaded_file, "size", 0) or 0)
     if size > DOCX_MAX_TEMPLATE_SIZE:
         raise ValidationError("Die DOCX-Vorlage ist zu gross. Maximal erlaubt sind 10 MB.")
@@ -95,7 +97,9 @@ class DOCXTemplate(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
         self.is_default = True
         self.activated_at = timezone.now()
         self.updated_by = user
-        self.save(update_fields=["status", "is_default", "activated_at", "updated_by", "updated_at"])
+        self.save(
+            update_fields=["status", "is_default", "activated_at", "updated_by", "updated_at"]
+        )
 
     def __str__(self) -> str:
         return f"{self.form.key} - {self.title}"

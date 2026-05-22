@@ -55,7 +55,9 @@ def docx_template_upload_view(request):
             else:
                 messages.success(request, "DOCX-Vorlage wurde hochgeladen.")
                 return redirect("form_builder:docx_template_detail", template_id=template.pk)
-        messages.error(request, "DOCX-Vorlage konnte nicht gespeichert werden. Bitte Eingaben pruefen.")
+        messages.error(
+            request, "DOCX-Vorlage konnte nicht gespeichert werden. Bitte Eingaben pruefen."
+        )
     else:
         form = DOCXTemplateUploadForm()
     return render(
@@ -73,7 +75,9 @@ def docx_template_upload_view(request):
 @login_required(login_url="login")
 def docx_template_detail_view(request, template_id):
     require_permission(can_view_settings(request.user))
-    template = get_object_or_404(DOCXTemplate.objects.select_related("form", "uploaded_by"), pk=template_id)
+    template = get_object_or_404(
+        DOCXTemplate.objects.select_related("form", "uploaded_by"), pk=template_id
+    )
     if request.method == "POST":
         require_permission(can_manage_settings(request.user))
         form = DOCXTemplateStatusForm(request.POST, instance=template)
@@ -129,7 +133,9 @@ def entry_docx_generate_view(request, entry_id):
     if template_id:
         template = get_object_or_404(DOCXTemplate, pk=template_id, form=form_entry.form)
     try:
-        document = generate_docx_document(form_entry=form_entry, template=template, user=request.user)
+        document = generate_docx_document(
+            form_entry=form_entry, template=template, user=request.user
+        )
     except ValidationError as exc:
         messages.error(request, exc.message if hasattr(exc, "message") else exc)
         return redirect("form_builder:entry_detail", entry_id=form_entry.pk)
@@ -142,8 +148,13 @@ def docx_document_download_view(request, document_id):
     from .models import PDFDocument
     from .permissions import can_view_pdf_document
 
-    document = get_object_or_404(PDFDocument.objects.select_related("form_entry", "form", "bewohner"), pk=document_id)
-    if document.content_type != "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    document = get_object_or_404(
+        PDFDocument.objects.select_related("form_entry", "form", "bewohner"), pk=document_id
+    )
+    if (
+        document.content_type
+        != "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ):
         raise PermissionDenied
     if not can_view_pdf_document(request.user, document):
         raise PermissionDenied

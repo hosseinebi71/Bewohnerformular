@@ -1,5 +1,14 @@
 from django.urls import path
 
+from .action_item_views import (
+    action_item_detail_view,
+    action_item_list_view,
+    action_item_update_view,
+    action_rule_create_view,
+    action_rule_delete_view,
+    action_rule_edit_view,
+    action_rule_list_view,
+)
 from .attachment_views import attachment_delete_view, attachment_download_view
 from .conditional_builder_views import (
     conditional_rule_create_view,
@@ -167,6 +176,13 @@ urlpatterns = [
     path("formulare/ausgangskorb/verarbeiten/", process_outbox_view, name="outbox_process"),
     path("formulare/versandt/", sent_list_view, name="sent_list"),
     path("formulare/archiv/", archive_list_view, name="archive_list"),
+    path("massnahmen/", action_item_list_view, name="action_item_list"),
+    path("massnahmen/<uuid:item_id>/", action_item_detail_view, name="action_item_detail"),
+    path(
+        "massnahmen/<uuid:item_id>/aktualisieren/",
+        action_item_update_view,
+        name="action_item_update",
+    ),
     path("profil/", profile_view, name="profile"),
     path("einstellungen/", settings_index_view, name="settings_index"),
     path("einstellungen/docx-vorlagen/", docx_template_list_view, name="docx_template_list"),
@@ -268,6 +284,26 @@ urlpatterns = [
         "einstellungen/form-builder/regeln/<uuid:rule_id>/loeschen/",
         conditional_rule_delete_view,
         name="conditional_rule_delete",
+    ),
+    path(
+        "einstellungen/form-builder/<uuid:form_id>/massnahmen-regeln/",
+        action_rule_list_view,
+        name="action_rule_list",
+    ),
+    path(
+        "einstellungen/form-builder/<uuid:form_id>/massnahmen-regeln/neu/",
+        action_rule_create_view,
+        name="action_rule_create",
+    ),
+    path(
+        "einstellungen/form-builder/massnahmen-regeln/<uuid:rule_id>/bearbeiten/",
+        action_rule_edit_view,
+        name="action_rule_edit",
+    ),
+    path(
+        "einstellungen/form-builder/massnahmen-regeln/<uuid:rule_id>/loeschen/",
+        action_rule_delete_view,
+        name="action_rule_delete",
     ),
     path(
         "einstellungen/form-builder/<uuid:form_id>/abschnitte/neu/",

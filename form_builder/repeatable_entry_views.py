@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 
+from .action_item_services import sync_action_items_for_entry
 from .conditional_services import apply_conditional_rules_to_form, get_conditional_rules_payload
 from .models import Form, FormEntry
 from .pdf_services import get_latest_generated_pdf_document
@@ -361,6 +362,7 @@ def entry_review_view(request, entry_id):
                 files=request.FILES,
                 user=request.user,
             )
+            sync_action_items_for_entry(form_entry=form_entry, user=request.user)
         except ValidationError as exc:
             entry_form.add_error(None, exc)
         else:

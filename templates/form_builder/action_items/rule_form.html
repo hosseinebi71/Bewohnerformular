@@ -1,0 +1,16 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface">
+  <div class="document-titlebar">
+    <div><p class="eyebrow">Form Builder</p><h2>Massnahmen-Regel</h2><p>{{ form_definition.title }}</p></div>
+  </div>
+  <form method="post" class="form-grid government-form">
+    {% csrf_token %}
+    {{ rule_form.as_p }}
+    <div class="actionbar">
+      <button class="button" type="submit">Speichern</button>
+      <a class="button ghost" href="{% url 'form_builder:action_rule_list' form_definition.id %}">Abbrechen</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

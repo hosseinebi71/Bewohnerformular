@@ -1,0 +1,12 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface">
+  <h2>Massnahmen-Regel loeschen</h2>
+  <p>Soll die Regel "{{ rule.name }}" geloescht werden?</p>
+  <form method="post">
+    {% csrf_token %}
+    <button class="button danger" type="submit">Loeschen</button>
+    <a class="button ghost" href="{% url 'form_builder:action_rule_list' form_definition.id %}">Abbrechen</a>
+  </form>
+</section>
+{% endblock %}
