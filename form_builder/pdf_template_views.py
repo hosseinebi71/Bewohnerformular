@@ -112,9 +112,9 @@ def pdf_template_activate_view(request, template_id):
     template = get_object_or_404(PDFTemplate.objects.select_related("form"), pk=template_id)
     if request.method != "POST":
         return redirect("form_builder:pdf_template_detail", template_id=template.pk)
-    PDFTemplate.objects.filter(form=template.form, status=PDFTemplate.TemplateStatus.ACTIVE).exclude(
-        pk=template.pk
-    ).update(status=PDFTemplate.TemplateStatus.RETIRED, is_active=False)
+    PDFTemplate.objects.filter(
+        form=template.form, status=PDFTemplate.TemplateStatus.ACTIVE
+    ).exclude(pk=template.pk).update(status=PDFTemplate.TemplateStatus.RETIRED, is_active=False)
     template.status = PDFTemplate.TemplateStatus.ACTIVE
     template.is_active = True
     template.updated_by = request.user

@@ -1,0 +1,18 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface form-panel">
+  <div class="section-header">
+    <div>
+      <p class="eyebrow">DOCX</p>
+      <h2>DOCX-Vorlage hochladen</h2>
+      <p>Erlaubt sind nur sichere <code>.docx</code>-Dateien. <code>.doc</code> und Makrodateien werden abgelehnt.</p>
+    </div>
+    <a class="button ghost" href="{% url 'form_builder:docx_template_list' %}">Zurück</a>
+  </div>
+  <form method="post" enctype="multipart/form-data" class="form-grid government-form">
+    {% csrf_token %}
+    {{ upload_form.as_p }}
+    <div class="actionbar sticky-actions"><button class="button" type="submit">Hochladen</button></div>
+  </form>
+</section>
+{% endblock %}

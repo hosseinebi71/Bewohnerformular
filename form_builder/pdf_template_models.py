@@ -4,13 +4,12 @@ import hashlib
 import os
 import uuid
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import get_valid_filename
 
-from .models import Field, Form, TimeStampedModel, UUIDPrimaryKeyModel, UserStampedModel
+from .models import Field, Form, TimeStampedModel, UserStampedModel, UUIDPrimaryKeyModel
 
 MAX_TEMPLATE_SIZE_BYTES = 25 * 1024 * 1024
 
@@ -106,14 +105,20 @@ class PDFTemplatePlacement(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedMod
         SIGNATURE = "signature", "Unterschrift"
 
     template = models.ForeignKey(PDFTemplate, on_delete=models.CASCADE, related_name="placements")
-    field = models.ForeignKey(Field, on_delete=models.CASCADE, related_name="pdf_template_placements")
+    field = models.ForeignKey(
+        Field, on_delete=models.CASCADE, related_name="pdf_template_placements"
+    )
     page_number = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
     x = models.FloatField(validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
     y = models.FloatField(validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
     width = models.FloatField(validators=[MinValueValidator(0.001), MaxValueValidator(1.0)])
     height = models.FloatField(validators=[MinValueValidator(0.001), MaxValueValidator(1.0)])
-    kind = models.CharField(max_length=24, choices=PlacementKind.choices, default=PlacementKind.TEXT)
-    font_size = models.PositiveIntegerField(default=10, validators=[MinValueValidator(6), MaxValueValidator(28)])
+    kind = models.CharField(
+        max_length=24, choices=PlacementKind.choices, default=PlacementKind.TEXT
+    )
+    font_size = models.PositiveIntegerField(
+        default=10, validators=[MinValueValidator(6), MaxValueValidator(28)]
+    )
     is_active = models.BooleanField(default=True)
     config = models.JSONField(default=dict, blank=True)
 

@@ -1,0 +1,33 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface">
+  <div class="section-header">
+    <div>
+      <p class="eyebrow">DOCX-Vorlage</p>
+      <h2>{{ template.title }}</h2>
+      <p>{{ template.form.title }} · {{ template.original_filename }}</p>
+    </div>
+    <div class="title-actions">
+      <a class="button ghost" href="{% url 'form_builder:docx_template_file' template.id %}">Datei herunterladen</a>
+      <a class="button ghost" href="{% url 'form_builder:docx_template_list' %}">Zurück</a>
+    </div>
+  </div>
+  <div class="metric-grid">
+    <div class="metric"><span>Status</span><strong>{{ template.get_status_display }}</strong></div>
+    <div class="metric"><span>Platzhalter</span><strong>{{ template.placeholder_keys|length }}</strong></div>
+    <div class="metric"><span>Dateigröße</span><strong>{{ template.file_size }} Bytes</strong></div>
+  </div>
+  <h3>Erkannte Platzhalter</h3>
+  <div class="tag-list">
+    {% for key in template.placeholder_keys %}<code>{{ key }}</code>{% empty %}<p>Keine Platzhalter erkannt.</p>{% endfor %}
+  </div>
+  {% if can_manage_settings %}
+    <h3>Einstellungen</h3>
+    <form method="post" class="form-grid government-form">
+      {% csrf_token %}
+      {{ template_form.as_p }}
+      <div class="actionbar"><button class="button" type="submit">Speichern</button></div>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

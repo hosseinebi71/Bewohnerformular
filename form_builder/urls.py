@@ -7,6 +7,14 @@ from .conditional_builder_views import (
     conditional_rule_edit_view,
     conditional_rule_list_view,
 )
+from .docx_template_views import (
+    docx_document_download_view,
+    docx_template_detail_view,
+    docx_template_file_view,
+    docx_template_list_view,
+    docx_template_upload_view,
+    entry_docx_generate_view,
+)
 from .excel_import_views import (
     excel_import_detail_view,
     excel_import_generate_view,
@@ -132,7 +140,17 @@ urlpatterns = [
         entry_pdf_generate_view,
         name="entry_pdf_generate",
     ),
+    path(
+        "formulare/eintraege/<uuid:entry_id>/docx/erzeugen/",
+        entry_docx_generate_view,
+        name="entry_docx_generate",
+    ),
     path("dokumente/pdf/<uuid:pdf_id>/", pdf_download_view, name="pdf_download"),
+    path(
+        "dokumente/docx/<uuid:document_id>/",
+        docx_document_download_view,
+        name="docx_document_download",
+    ),
     path(
         "dokumente/anhang/<uuid:attachment_id>/",
         attachment_download_view,
@@ -151,6 +169,22 @@ urlpatterns = [
     path("formulare/archiv/", archive_list_view, name="archive_list"),
     path("profil/", profile_view, name="profile"),
     path("einstellungen/", settings_index_view, name="settings_index"),
+    path("einstellungen/docx-vorlagen/", docx_template_list_view, name="docx_template_list"),
+    path(
+        "einstellungen/docx-vorlagen/hochladen/",
+        docx_template_upload_view,
+        name="docx_template_upload",
+    ),
+    path(
+        "einstellungen/docx-vorlagen/<uuid:template_id>/",
+        docx_template_detail_view,
+        name="docx_template_detail",
+    ),
+    path(
+        "einstellungen/docx-vorlagen/<uuid:template_id>/datei/",
+        docx_template_file_view,
+        name="docx_template_file",
+    ),
     path("einstellungen/excel-importe/", excel_import_list_view, name="excel_import_list"),
     path(
         "einstellungen/excel-importe/hochladen/",

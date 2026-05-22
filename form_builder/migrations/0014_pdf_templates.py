@@ -24,7 +24,9 @@ class Migration(migrations.Migration):
                 ("updated_at", models.DateTimeField(auto_now=True)),
                 (
                     "id",
-                    models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
                 ),
                 ("name", models.CharField(max_length=255)),
                 ("original_filename", models.CharField(max_length=255)),
@@ -97,7 +99,9 @@ class Migration(migrations.Migration):
                 ("updated_at", models.DateTimeField(auto_now=True)),
                 (
                     "id",
-                    models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
                 ),
                 (
                     "page_number",
@@ -212,7 +216,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="pdftemplate",
-            index=models.Index(fields=["form", "status", "is_active"], name="form_builde_form_id_3ad4b5_idx"),
+            index=models.Index(
+                fields=["form", "status", "is_active"], name="form_builde_form_id_3ad4b5_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="pdftemplate",
@@ -227,6 +233,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="pdftemplateplacement",
-            index=models.Index(fields=["field", "is_active"], name="form_builde_field_i_d2b7fa_idx"),
+            index=models.Index(
+                fields=["field", "is_active"], name="form_builde_field_i_d2b7fa_idx"
+            ),
         ),
     ]

@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import base64
-import hashlib
 from io import BytesIO
 from pathlib import Path
 
 from django.core.exceptions import ValidationError
-from django.utils import timezone
 
 from .models import AuditLog, Field, FormEntry
 from .pdf_template_models import (
@@ -21,7 +19,9 @@ def _import_pdf_stack():
     try:
         from pypdf import PdfReader, PdfWriter
     except ImportError as exc:
-        raise ValidationError("pypdf ist nicht installiert. Bitte `poetry add pypdf` ausfuehren.") from exc
+        raise ValidationError(
+            "pypdf ist nicht installiert. Bitte `poetry add pypdf` ausfuehren."
+        ) from exc
     try:
         from reportlab.lib.utils import ImageReader
         from reportlab.pdfgen import canvas
@@ -167,12 +167,16 @@ def _draw_checkbox(c, *, checked: bool, x: float, y: float, width: float, height
 def _draw_signature(c, *, value, x: float, y: float, width: float, height: float, ImageReader):
     image_bytes = _signature_image_bytes(value)
     if image_bytes:
-        c.drawImage(ImageReader(BytesIO(image_bytes)), x, y, width=width, height=height, mask="auto")
+        c.drawImage(
+            ImageReader(BytesIO(image_bytes)), x, y, width=width, height=height, mask="auto"
+        )
     elif value:
         _draw_text(c, text="Unterschrieben", x=x, y=y, width=width, height=height, font_size=9)
 
 
-def _overlay_for_page(*, page_width: float, page_height: float, placements, form_entry, data_override=None) -> BytesIO:
+def _overlay_for_page(
+    *, page_width: float, page_height: float, placements, form_entry, data_override=None
+) -> BytesIO:
     _PdfReader, _PdfWriter, canvas, ImageReader = _import_pdf_stack()
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=(page_width, page_height))
@@ -183,9 +187,13 @@ def _overlay_for_page(*, page_width: float, page_height: float, placements, form
         height = placement.height * page_height
         y = page_height - ((placement.y + placement.height) * page_height)
         if placement.kind == PDFTemplatePlacement.PlacementKind.CHECKBOX:
-            _draw_checkbox(c, checked=_checkbox_is_checked(value), x=x, y=y, width=width, height=height)
+            _draw_checkbox(
+                c, checked=_checkbox_is_checked(value), x=x, y=y, width=width, height=height
+            )
         elif placement.kind == PDFTemplatePlacement.PlacementKind.SIGNATURE:
-            _draw_signature(c, value=value, x=x, y=y, width=width, height=height, ImageReader=ImageReader)
+            _draw_signature(
+                c, value=value, x=x, y=y, width=width, height=height, ImageReader=ImageReader
+            )
         else:
             _draw_text(
                 c,
@@ -201,7 +209,9 @@ def _overlay_for_page(*, page_width: float, page_height: float, placements, form
     return buffer
 
 
-def render_pdf_template_bytes(*, form_entry: FormEntry, template: PDFTemplate, data_override=None) -> bytes:
+def render_pdf_template_bytes(
+    *, form_entry: FormEntry, template: PDFTemplate, data_override=None
+) -> bytes:
     PdfReader, PdfWriter, _canvas, _ImageReader = _import_pdf_stack()
     with template.file.open("rb") as source:
         reader = PdfReader(source)
@@ -248,7 +258,9 @@ def register_pdf_template_renderer() -> None:
     original_render = pdf_services.render_entry_pdf_bytes
 
     def wrapped_render_entry_pdf_bytes(*, form_entry, generated_by=None, data_override=None):
-        rendered = render_from_template_if_available(form_entry=form_entry, data_override=data_override)
+        rendered = render_from_template_if_available(
+            form_entry=form_entry, data_override=data_override
+        )
         if rendered is not None:
             return rendered
         return original_render(

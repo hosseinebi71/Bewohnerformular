@@ -1,0 +1,29 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface">
+  <div class="section-header">
+    <div>
+      <p class="eyebrow">Vorlagen</p>
+      <h2>DOCX-Vorlagen</h2>
+      <p>Word-Vorlagen mit Platzhaltern wie <code>{{ '{{bewohner_name}}' }}</code> oder <code>{{ '{{field_key}}' }}</code>.</p>
+    </div>
+    {% if can_manage_settings %}<a class="button" href="{% url 'form_builder:docx_template_upload' %}">DOCX hochladen</a>{% endif %}
+  </div>
+  <table class="data-table">
+    <thead><tr><th>Formular</th><th>Titel</th><th>Status</th><th>Platzhalter</th><th></th></tr></thead>
+    <tbody>
+      {% for template in templates %}
+        <tr>
+          <td>{{ template.form.title }}</td>
+          <td>{{ template.title }}{% if template.is_default %} <span class="badge success">Standard</span>{% endif %}</td>
+          <td>{{ template.get_status_display }}</td>
+          <td>{{ template.placeholder_keys|length }}</td>
+          <td><a class="button ghost" href="{% url 'form_builder:docx_template_detail' template.id %}">Details</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">Noch keine DOCX-Vorlagen vorhanden.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
