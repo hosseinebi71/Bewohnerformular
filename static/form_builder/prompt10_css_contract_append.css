@@ -1,0 +1,73 @@
+
+/* Prompt 10 correction: CSS contract definitions for mobile/local-draft classes. */
+.form-filling-shell {
+  width: 100%;
+}
+.mobile-form-titlebar {
+  align-items: flex-start;
+}
+.mobile-friendly-form {
+  touch-action: manipulation;
+}
+.mobile-friendly-form input,
+.mobile-friendly-form select,
+.mobile-friendly-form textarea,
+.mobile-friendly-form button {
+  touch-action: manipulation;
+}
+.mobile-sticky-actions {
+  z-index: 20;
+}
+.local-draft-banner {
+  display: none;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #fed7aa;
+  border-left: 4px solid var(--warning);
+  border-radius: var(--radius);
+  background: #fff7ed;
+  color: #7c2d12;
+  font-weight: 750;
+}
+.local-draft-banner.is-visible {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.local-draft-banner .button {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 13px;
+}
+@media (max-width: 720px) {
+  .form-filling-shell {
+    display: block;
+  }
+  .mobile-form-titlebar {
+    gap: 12px;
+  }
+  .mobile-friendly-form .field-row {
+    padding: 18px 16px;
+  }
+  .mobile-friendly-form input,
+  .mobile-friendly-form select,
+  .mobile-friendly-form textarea {
+    min-height: 50px;
+    font-size: 16px;
+  }
+  .mobile-friendly-form input[type="checkbox"] {
+    width: 26px;
+    height: 26px;
+    min-height: 26px;
+  }
+  .mobile-sticky-actions {
+    position: sticky;
+    bottom: 0;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .local-draft-banner.is-visible {
+    display: grid;
+  }
+}

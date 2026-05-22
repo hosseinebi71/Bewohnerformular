@@ -1,0 +1,30 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="page-intro">
+  <div>
+    <p class="eyebrow">QR-Kontexte</p>
+    <h2>QR-Codes fuer Formulare</h2>
+    <p>QR-Codes oeffnen ein Formular mit optionalem Bewohner-, Raum-, Standort- oder Objektkontext. Tokens sind zufaellig und enthalten keine rohen Datenbank-IDs.</p>
+  </div>
+  <a class="button" href="{% url 'form_builder:qr_context_create' %}">QR-Code erstellen</a>
+</section>
+<section class="surface table-panel">
+  <table class="data-table">
+    <thead><tr><th>Label</th><th>Formular</th><th>Kontext</th><th>Status</th><th>Nutzung</th><th></th></tr></thead>
+    <tbody>
+      {% for context in contexts %}
+      <tr>
+        <td><strong>{{ context.label }}</strong></td>
+        <td>{{ context.form.title }}</td>
+        <td>{{ context.context_type|default:"-" }} {{ context.context_key|default:"" }}</td>
+        <td>{% if context.can_open %}<span class="badge success">Aktiv</span>{% else %}<span class="badge muted">Inaktiv</span>{% endif %}</td>
+        <td>{{ context.usage_count }}</td>
+        <td class="table-action"><a class="button compact ghost" href="{% url 'form_builder:qr_context_detail' context.id %}">Details</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">Noch keine QR-Codes vorhanden.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

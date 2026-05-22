@@ -1,0 +1,35 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="page-intro compact-intro">
+  <div>
+    <p class="eyebrow">QR-Code</p>
+    <h2>{{ context.label }}</h2>
+    <p>{{ context.form.title }}{% if context.bewohner %} · {{ context.bewohner }}{% endif %}</p>
+  </div>
+  <a class="button ghost" href="{% url 'form_builder:qr_context_list' %}">Zurueck</a>
+</section>
+<section class="surface panel">
+  <div class="qr-detail-grid">
+    <div>
+      <img class="qr-preview" alt="QR-Code" src="{% url 'form_builder:qr_context_png' context.id %}">
+      <p><a class="button compact" href="{% url 'form_builder:qr_context_png' context.id %}">PNG oeffnen</a></p>
+    </div>
+    <div>
+      <p class="eyebrow">Scan-Link</p>
+      <p><code>{{ open_url }}</code></p>
+      <dl class="detail-list">
+        <dt>Status</dt><dd>{% if context.can_open %}Aktiv{% else %}Inaktiv/abgelaufen{% endif %}</dd>
+        <dt>Kontext</dt><dd>{{ context.context_type|default:"-" }} {{ context.context_key|default:"" }}</dd>
+        <dt>Nutzung</dt><dd>{{ context.usage_count }}</dd>
+        <dt>Letzte Nutzung</dt><dd>{{ context.last_used_at|default:"-" }}</dd>
+      </dl>
+      {% if context.is_active %}
+      <form method="post" action="{% url 'form_builder:qr_context_deactivate' context.id %}">
+        {% csrf_token %}
+        <button class="button ghost danger-link" type="submit">Deaktivieren</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

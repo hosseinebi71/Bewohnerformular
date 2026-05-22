@@ -6,7 +6,7 @@ from django.utils import timezone
 from openpyxl import load_workbook
 
 from form_builder.action_item_models import ActionItem
-from form_builder.models import Bewohner, Field, Form, FormEntry, OutboxItem
+from form_builder.models import Bewohner, Field, Form, FormEntry
 from form_builder.reporting_services import (
     export_entries_to_xlsx,
     get_operational_dashboard_data,
@@ -66,7 +66,9 @@ class ReportingTests(TestCase):
         )
 
     def test_excel_export_contains_entry_values(self):
-        data = export_entries_to_xlsx(user=self.user, entries=FormEntry.objects.filter(pk=self.entry.pk))
+        data = export_entries_to_xlsx(
+            user=self.user, entries=FormEntry.objects.filter(pk=self.entry.pk)
+        )
         workbook = load_workbook(BytesIO(data))
         sheet = workbook["Eintraege"]
         headers = [cell.value for cell in sheet[1]]

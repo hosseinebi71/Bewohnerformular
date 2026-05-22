@@ -1,0 +1,126 @@
+/* Prompt 10.1-10.2 mobile/tablet form UX and local draft protection. Append this block to existing app.css. */
+.form-filling-shell {
+  width: 100%;
+}
+.mobile-friendly-form input,
+.mobile-friendly-form select,
+.mobile-friendly-form textarea {
+  min-height: 46px;
+  font-size: 16px;
+  touch-action: manipulation;
+}
+.mobile-friendly-form input[type="checkbox"],
+.mobile-friendly-form input[type="radio"] {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+}
+.mobile-friendly-form input[type="file"] {
+  padding: 12px;
+  min-height: 54px;
+  background: #fff;
+}
+.mobile-friendly-form textarea {
+  min-height: 118px;
+}
+.mobile-friendly-form .field-row {
+  scroll-margin-top: 92px;
+}
+.mobile-friendly-form .field-row:focus-within {
+  background: rgba(80, 109, 169, 0.045);
+}
+.local-draft-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 16px 18px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(181, 99, 0, .28);
+  border-left: 4px solid var(--warning);
+  border-radius: 14px;
+  background: #fff8eb;
+  color: #5f370e;
+}
+.local-draft-banner[hidden] {
+  display: none;
+}
+.local-draft-banner strong {
+  font-weight: 950;
+}
+.local-draft-banner span {
+  flex: 1 1 220px;
+}
+.mobile-sticky-actions {
+  z-index: 20;
+}
+@media (max-width: 900px) {
+  .form-panel.mobile-friendly-form {
+    border-radius: 16px;
+  }
+  .mobile-form-titlebar {
+    display: grid;
+    gap: 14px;
+  }
+  .mobile-form-titlebar .title-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+  .mobile-form-titlebar .title-actions .button {
+    width: 100%;
+    justify-content: center;
+  }
+  .mobile-friendly-form .form-grid,
+  .mobile-friendly-form .government-form,
+  .mobile-friendly-form .section-fields {
+    grid-template-columns: 1fr;
+  }
+  .mobile-friendly-form .field-row {
+    padding: 16px;
+    gap: 9px;
+  }
+  .mobile-friendly-form .field-row label {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+  .mobile-friendly-form .repeatable-group-shell,
+  .mobile-friendly-form .repeatable-group-table,
+  .mobile-friendly-form .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-friendly-form .signature-pad,
+  .mobile-friendly-form canvas {
+    max-width: 100%;
+    touch-action: none;
+  }
+  .mobile-sticky-actions {
+    position: sticky;
+    bottom: 0;
+    margin-inline: -1px;
+    padding: 12px;
+    border-top: 1px solid var(--line);
+    background: rgba(255,255,255,.96);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 -14px 36px rgba(15, 23, 42, .08);
+  }
+  .mobile-sticky-actions .button {
+    min-height: 46px;
+  }
+  .mobile-sticky-actions .save-hint {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+}
+@media (max-width: 520px) {
+  .mobile-form-titlebar .title-actions {
+    grid-template-columns: 1fr;
+  }
+  .local-draft-banner {
+    margin: 12px;
+  }
+  .local-draft-banner .button {
+    width: 100%;
+  }
+}

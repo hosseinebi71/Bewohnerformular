@@ -38,10 +38,14 @@ def default_month_period(today: date | None = None) -> ReportingPeriod:
     return ReportingPeriod(start=start, end=end)
 
 
-def parse_date_period(start_text: str | None = None, end_text: str | None = None) -> ReportingPeriod:
+def parse_date_period(
+    start_text: str | None = None, end_text: str | None = None
+) -> ReportingPeriod:
     if not start_text and not end_text:
         return default_month_period()
-    start_date = date.fromisoformat(start_text) if start_text else timezone.localdate().replace(day=1)
+    start_date = (
+        date.fromisoformat(start_text) if start_text else timezone.localdate().replace(day=1)
+    )
     end_date = date.fromisoformat(end_text) if end_text else timezone.localdate()
     start, _ = _local_day_bounds(start_date)
     _, end = _local_day_bounds(end_date)
@@ -49,9 +53,9 @@ def parse_date_period(start_text: str | None = None, end_text: str | None = None
 
 
 def scoped_entries(user, *, form: Form | None = None, period: ReportingPeriod | None = None):
-    queryset = FormEntry.objects.select_related("form", "bewohner", "created_by", "updated_by").exclude(
-        status=FormEntry.EntryStatus.DELETED
-    )
+    queryset = FormEntry.objects.select_related(
+        "form", "bewohner", "created_by", "updated_by"
+    ).exclude(status=FormEntry.EntryStatus.DELETED)
     if user is not None:
         queryset = queryset.filter(entry_scope_q(user))
     if form is not None:
@@ -174,16 +178,20 @@ def export_entries_to_xlsx(*, user, entries, filename_prefix: str = "formulare")
 
     buffer = BytesIO()
     wb.save(buffer)
-    AuditLog.objects.create(
-        actor=user,
-        event_type=AuditLog.EventType.DOWNLOAD,
-        target_model="FormEntry",
-        target_id=entry_list[0].pk if entry_list else FormEntry.objects.none().model().pk,
-        form=entry_list[0].form if entry_list else None,
-        form_entry=entry_list[0] if entry_list else None,
-        message="Formulareintraege wurden als Excel exportiert.",
-        metadata={"count": len(entry_list), "filename_prefix": filename_prefix},
-    ) if entry_list else None
+    (
+        AuditLog.objects.create(
+            actor=user,
+            event_type=AuditLog.EventType.DOWNLOAD,
+            target_model="FormEntry",
+            target_id=entry_list[0].pk if entry_list else FormEntry.objects.none().model().pk,
+            form=entry_list[0].form if entry_list else None,
+            form_entry=entry_list[0] if entry_list else None,
+            message="Formulareintraege wurden als Excel exportiert.",
+            metadata={"count": len(entry_list), "filename_prefix": filename_prefix},
+        )
+        if entry_list
+        else None
+    )
     return buffer.getvalue()
 
 
@@ -197,15 +205,21 @@ def get_operational_dashboard_data(user) -> dict:
     month_start_dt, _ = _local_day_bounds(month_start)
 
     entries = scoped_entries(user)
-    action_items = ActionItem.objects.select_related("source_entry", "source_entry__form", "assigned_to")
+    action_items = ActionItem.objects.select_related(
+        "source_entry", "source_entry__form", "assigned_to"
+    )
     if user is not None:
         action_items = action_items.filter(source_entry__in=scoped_entries(user).values("pk"))
 
-    pending_reviews = entries.filter(status=FormEntry.EntryStatus.IN_REVIEW).order_by("submitted_at")[:10]
-    ready_to_send = entries.filter(status=FormEntry.EntryStatus.APPROVED).order_by("updated_at")[:10]
-    failed_outbox = OutboxItem.objects.select_related("form_entry", "form", "bewohner", "recipient").filter(
-        status=OutboxItem.DeliveryStatus.FAILED
-    )
+    pending_reviews = entries.filter(status=FormEntry.EntryStatus.IN_REVIEW).order_by(
+        "submitted_at"
+    )[:10]
+    ready_to_send = entries.filter(status=FormEntry.EntryStatus.APPROVED).order_by("updated_at")[
+        :10
+    ]
+    failed_outbox = OutboxItem.objects.select_related(
+        "form_entry", "form", "bewohner", "recipient"
+    ).filter(status=OutboxItem.DeliveryStatus.FAILED)
     if user is not None:
         failed_outbox = failed_outbox.filter(form_entry__in=scoped_entries(user).values("pk"))
 
@@ -213,20 +227,34 @@ def get_operational_dashboard_data(user) -> dict:
         ActionItem.Status.OPEN,
         ActionItem.Status.IN_PROGRESS,
     ]
-    overdue_action_items = action_items.filter(status__in=open_action_statuses, due_at__lt=now).order_by("due_at")[:10]
-    recent_audit = AuditLog.objects.select_related("actor", "form", "form_entry").order_by("-occurred_at")
+    overdue_action_items = action_items.filter(
+        status__in=open_action_statuses, due_at__lt=now
+    ).order_by("due_at")[:10]
+    recent_audit = AuditLog.objects.select_related("actor", "form", "form_entry").order_by(
+        "-occurred_at"
+    )
     if user is not None:
-        recent_audit = recent_audit.filter(Q(form_entry__isnull=True) | Q(form_entry__in=scoped_entries(user).values("pk")))
+        recent_audit = recent_audit.filter(
+            Q(form_entry__isnull=True) | Q(form_entry__in=scoped_entries(user).values("pk"))
+        )
 
     return {
         "counts": {
             "pending_reviews": entries.filter(status=FormEntry.EntryStatus.IN_REVIEW).count(),
             "ready_to_send": entries.filter(status=FormEntry.EntryStatus.APPROVED).count(),
             "failed_outbox": failed_outbox.count(),
-            "overdue_action_items": action_items.filter(status__in=open_action_statuses, due_at__lt=now).count(),
-            "submitted_today": entries.filter(submitted_at__gte=today_start, submitted_at__lte=today_end).count(),
-            "submitted_week": entries.filter(submitted_at__gte=week_start_dt, submitted_at__lte=now).count(),
-            "submitted_month": entries.filter(submitted_at__gte=month_start_dt, submitted_at__lte=now).count(),
+            "overdue_action_items": action_items.filter(
+                status__in=open_action_statuses, due_at__lt=now
+            ).count(),
+            "submitted_today": entries.filter(
+                submitted_at__gte=today_start, submitted_at__lte=today_end
+            ).count(),
+            "submitted_week": entries.filter(
+                submitted_at__gte=week_start_dt, submitted_at__lte=now
+            ).count(),
+            "submitted_month": entries.filter(
+                submitted_at__gte=month_start_dt, submitted_at__lte=now
+            ).count(),
         },
         "pending_reviews": pending_reviews,
         "ready_to_send": ready_to_send,
@@ -254,15 +282,21 @@ def monthly_report_context(*, user, form: Form | None, period: ReportingPeriod) 
         "completed_issues": action_items.filter(
             status__in=[ActionItem.Status.DONE, ActionItem.Status.VERIFIED]
         ).count(),
-        "overdue_issues": action_items.filter(status__in=open_statuses, due_at__lt=timezone.now()).count(),
-        "critical_items": action_items.filter(priority=ActionItem.Priority.HIGH).order_by("due_at")[:25],
+        "overdue_issues": action_items.filter(
+            status__in=open_statuses, due_at__lt=timezone.now()
+        ).count(),
+        "critical_items": action_items.filter(priority=ActionItem.Priority.HIGH).order_by("due_at")[
+            :25
+        ],
         "per_form_summary": list(
             entries.values("form__title").annotate(total=Count("id")).order_by("form__title")
         ),
     }
 
 
-def render_monthly_report_pdf(*, user, form: Form | None, period: ReportingPeriod | None = None) -> bytes:
+def render_monthly_report_pdf(
+    *, user, form: Form | None, period: ReportingPeriod | None = None
+) -> bytes:
     period = period or default_month_period()
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
@@ -318,16 +352,35 @@ def render_monthly_report_pdf(*, user, form: Form | None, period: ReportingPerio
     if len(critical) == 1:
         critical.append(["Keine kritischen Massnahmen", "", "", ""])
     critical_table = Table(critical, colWidths=[70 * mm, 35 * mm, 35 * mm, 45 * mm])
-    critical_table.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.4, colors.grey), ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey)]))
+    critical_table.setStyle(
+        TableStyle(
+            [
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ]
+        )
+    )
     story.append(critical_table)
     doc.build(story)
-    AuditLog.objects.create(
-        actor=user,
-        event_type=AuditLog.EventType.DOWNLOAD,
-        target_model="Form" if form else "FormEntry",
-        target_id=form.pk if form else (context["entries"].first().pk if context["entries"].exists() else Form.objects.first().pk),
-        form=form,
-        message="Monatsbericht wurde als PDF erzeugt.",
-        metadata={"start": period.start.isoformat(), "end": period.end.isoformat()},
-    ) if (form or context["entries"].exists() or Form.objects.exists()) else None
+    (
+        AuditLog.objects.create(
+            actor=user,
+            event_type=AuditLog.EventType.DOWNLOAD,
+            target_model="Form" if form else "FormEntry",
+            target_id=(
+                form.pk
+                if form
+                else (
+                    context["entries"].first().pk
+                    if context["entries"].exists()
+                    else Form.objects.first().pk
+                )
+            ),
+            form=form,
+            message="Monatsbericht wurde als PDF erzeugt.",
+            metadata={"start": period.start.isoformat(), "end": period.end.isoformat()},
+        )
+        if (form or context["entries"].exists() or Form.objects.exists())
+        else None
+    )
     return buffer.getvalue()

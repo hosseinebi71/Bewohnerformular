@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from .models import Form
-from .permissions import can_view_dashboard, can_view_forms, can_view_form
+from .permissions import can_view_dashboard, can_view_form, can_view_forms
 from .reporting_services import (
     export_entries_to_xlsx,
     get_operational_dashboard_data,

@@ -1,7 +1,8 @@
 {% extends "form_builder/base.html" %}
+{% load static %}
 {% block content %}
-<section class="document-editor-layout no-preview">
-  <div class="document-titlebar surface">
+<section class="document-editor-layout no-preview form-filling-shell">
+  <div class="document-titlebar surface mobile-form-titlebar">
     <div>
       <p class="eyebrow">Neuer Vorgang</p>
       <h2>{{ form_definition.title }}</h2>
@@ -14,18 +15,24 @@
     </div>
   </div>
 
-  <form id="entry-editor" class="surface form-panel" method="post" autocomplete="off" enctype="multipart/form-data">
+  <form id="entry-editor" class="surface form-panel mobile-friendly-form" method="post" autocomplete="off" enctype="multipart/form-data" data-local-draft="true" data-local-draft-key="entry-create-{{ form_definition.id }}" data-local-draft-ttl-hours="24">
     {% csrf_token %}
+    <div class="local-draft-banner" data-local-draft-banner hidden>
+      <strong>Lokaler Entwurf gefunden.</strong>
+      <span>Ungesendete Eingaben aus diesem Browser koennen wiederhergestellt werden.</span>
+      <button class="button compact" type="button" data-local-draft-restore>Wiederherstellen</button>
+      <button class="button compact ghost" type="button" data-local-draft-discard>Verwerfen</button>
+    </div>
     <div class="section-label">Direkte Erfassung ohne Bewohner-Auswahl</div>
     {% if form_definition.key == "meldung-besonderes-vorkommnis" %}
       {% include "form_builder/partials/bv_editor_fields.html" %}
     {% else %}
       {% include "form_builder/partials/entry_form_fields.html" %}
     {% endif %}
-    <div class="actionbar sticky-actions">
+    <div class="actionbar sticky-actions mobile-sticky-actions">
       <span class="save-hint">Vorschau öffnet die aktuellen Eingaben im neuen Tab. Gesendet wird erst nach Freigabe.</span>
       <button class="button ghost" formaction="{% url 'form_builder:entry_pdf_new_live_preview' form_definition.id %}" formmethod="post" formtarget="_blank" formnovalidate type="submit">Vorschau</button>
-      <button class="button ghost" name="action" value="draft" type="submit">Entwurf erstellen</button>
+      <button class="button ghost" name="action" value="draft" type="submit" data-local-draft-clear>Entwurf erstellen</button>
     </div>
   </form>
 </section>
@@ -35,4 +42,5 @@
 {% include "form_builder/partials/signature_pad_script.html" %}
 {% include "form_builder/partials/repeatable_group_script.html" %}
 {% include "form_builder/partials/conditional_logic_script.html" %}
+<script src="{% static 'form_builder/local_draft.js' %}" defer></script>
 {% endblock %}

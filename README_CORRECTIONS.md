@@ -1,18 +1,19 @@
-# Prompt 8 corrections after local test
+# Prompt 10 CSS contract correction
 
-Fixes:
+The frontend CSS contract test reads `static/form_builder/app.css` and found Prompt 10 classes in templates that were only defined in the new mobile CSS layer.
 
-1. `ActionItem.due_at` date-only values are stored around local noon instead of midnight, avoiding Europe/Berlin -> UTC previous-day shifts.
-2. `test_action_items.py` checks the local date via `timezone.localdate()`.
-3. `test_pdf_templates.py` no longer compares PDF byte length, because pypdf/reportlab output can be smaller after overlay/optimization. It verifies a valid one-page PDF instead.
+This correction appends the missing class definitions to `app.css` without overwriting the existing stylesheet.
 
-After copying these files, run:
+Apply from the project root:
 
 ```powershell
-poetry run python manage.py check
+.\tools\apply_prompt10_css_contract_fix.ps1
 poetry run python manage.py test form_builder
 poetry run pre-commit run --all-files
-poetry run python manage.py makemigrations --check --dry-run
 ```
 
-If `ruff-format` or `isort` modifies files, run pre-commit once more and then rerun the tests.
+If PowerShell blocks the script, run:
+
+```powershell
+Get-Content .\static\form_builder\prompt10_css_contract_append.css | Add-Content .\static\form_builder\app.css
+```

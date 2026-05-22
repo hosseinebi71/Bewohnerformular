@@ -41,6 +41,14 @@ from .pdf_template_views import (
     pdf_template_placement_edit_view,
     pdf_template_upload_view,
 )
+from .qr_context_views import (
+    qr_context_create_view,
+    qr_context_deactivate_view,
+    qr_context_detail_view,
+    qr_context_list_view,
+    qr_context_open_view,
+    qr_context_png_view,
+)
 from .repeatable_builder_views import (
     repeatable_column_create_view,
     repeatable_column_delete_view,
@@ -117,6 +125,7 @@ urlpatterns = [
     path("dashboard/betrieb/", operational_dashboard_view, name="operational_dashboard"),
     path("reports/export/excel/", entries_excel_export_view, name="entries_excel_export"),
     path("reports/monthly/pdf/", monthly_pdf_report_view, name="monthly_pdf_report"),
+    path("qr/<str:token>/", qr_context_open_view, name="qr_context_open"),
     path("formulare/", form_list_view, name="form_list"),
     path("formulare/<uuid:form_id>/neu/", entry_create_view, name="entry_create"),
     path("formulare/<uuid:form_id>/leer/pdf/", form_blank_pdf_view, name="form_blank_pdf"),
@@ -193,6 +202,21 @@ urlpatterns = [
     ),
     path("profil/", profile_view, name="profile"),
     path("einstellungen/", settings_index_view, name="settings_index"),
+    path("einstellungen/qr-codes/", qr_context_list_view, name="qr_context_list"),
+    path("einstellungen/qr-codes/neu/", qr_context_create_view, name="qr_context_create"),
+    path(
+        "einstellungen/qr-codes/<uuid:context_id>/",
+        qr_context_detail_view,
+        name="qr_context_detail",
+    ),
+    path(
+        "einstellungen/qr-codes/<uuid:context_id>/bild/", qr_context_png_view, name="qr_context_png"
+    ),
+    path(
+        "einstellungen/qr-codes/<uuid:context_id>/deaktivieren/",
+        qr_context_deactivate_view,
+        name="qr_context_deactivate",
+    ),
     path("einstellungen/docx-vorlagen/", docx_template_list_view, name="docx_template_list"),
     path(
         "einstellungen/docx-vorlagen/hochladen/",

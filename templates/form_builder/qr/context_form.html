@@ -1,0 +1,27 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="page-intro compact-intro">
+  <div>
+    <p class="eyebrow">QR-Code</p>
+    <h2>QR-Code erstellen</h2>
+    <p>Erstellt einen sicheren Token, der beim Scan einen neuen Entwurf mit optionalem Kontext anlegt.</p>
+  </div>
+</section>
+<form method="post" class="surface form-card compact-form">
+  {% csrf_token %}
+  {% for field in form %}
+    <div class="field-row">
+      <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span>*</span>{% endif %}</label>
+      <div>
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+  <div class="actionbar sticky-actions">
+    <a class="button ghost" href="{% url 'form_builder:qr_context_list' %}">Abbrechen</a>
+    <button class="button" type="submit">Speichern</button>
+  </div>
+</form>
+{% endblock %}
