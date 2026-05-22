@@ -59,6 +59,11 @@ from .repeatable_entry_views import (
     entry_save_view,
     entry_validate_view,
 )
+from .reporting_views import (
+    entries_excel_export_view,
+    monthly_pdf_report_view,
+    operational_dashboard_view,
+)
 from .views import (
     archive_list_view,
     dashboard_view,
@@ -109,6 +114,9 @@ app_name = "form_builder"
 urlpatterns = [
     path("", dashboard_view, name="dashboard"),
     path("dashboard/", dashboard_view, name="dashboard"),
+    path("dashboard/betrieb/", operational_dashboard_view, name="operational_dashboard"),
+    path("reports/export/excel/", entries_excel_export_view, name="entries_excel_export"),
+    path("reports/monthly/pdf/", monthly_pdf_report_view, name="monthly_pdf_report"),
     path("formulare/", form_list_view, name="form_list"),
     path("formulare/<uuid:form_id>/neu/", entry_create_view, name="entry_create"),
     path("formulare/<uuid:form_id>/leer/pdf/", form_blank_pdf_view, name="form_blank_pdf"),

@@ -1,0 +1,57 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface">
+  <div class="document-titlebar">
+    <div>
+      <p class="eyebrow">Management</p>
+      <h2>Betriebsdashboard</h2>
+      <p>Aufgaben, Reviews, Versandfehler und aktuelle Aktivitaeten.</p>
+    </div>
+    <div class="title-actions">
+      <a class="button ghost" href="{% url 'form_builder:entries_excel_export' %}">Excel exportieren</a>
+      <a class="button ghost" href="{% url 'form_builder:monthly_pdf_report' %}">Monatsbericht PDF</a>
+    </div>
+  </div>
+  <div class="stats-grid">
+    <article><strong>{{ operational_dashboard.counts.pending_reviews }}</strong><span>Reviews offen</span></article>
+    <article><strong>{{ operational_dashboard.counts.ready_to_send }}</strong><span>Bereit zum Versand</span></article>
+    <article><strong>{{ operational_dashboard.counts.failed_outbox }}</strong><span>Versandfehler</span></article>
+    <article><strong>{{ operational_dashboard.counts.overdue_action_items }}</strong><span>Massnahmen ueberfaellig</span></article>
+    <article><strong>{{ operational_dashboard.counts.submitted_today }}</strong><span>Heute eingereicht</span></article>
+    <article><strong>{{ operational_dashboard.counts.submitted_week }}</strong><span>Diese Woche</span></article>
+    <article><strong>{{ operational_dashboard.counts.submitted_month }}</strong><span>Diesen Monat</span></article>
+  </div>
+</section>
+<section class="surface">
+  <h3>Offene Reviews</h3>
+  <table class="data-table"><thead><tr><th>Formular</th><th>Bewohner</th><th>Eingereicht</th></tr></thead><tbody>
+    {% for entry in operational_dashboard.pending_reviews %}
+      <tr><td><a href="{% url 'form_builder:entry_detail' entry.id %}">{{ entry.form.title }}</a></td><td>{{ entry.bewohner }}</td><td>{{ entry.submitted_at|date:"d.m.Y H:i" }}</td></tr>
+    {% empty %}<tr><td colspan="3">Keine offenen Reviews.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+<section class="surface">
+  <h3>Ueberfaellige Massnahmen</h3>
+  <table class="data-table"><thead><tr><th>Titel</th><th>Faellig</th><th>Status</th></tr></thead><tbody>
+    {% for item in operational_dashboard.overdue_action_items %}
+      <tr><td><a href="{% url 'form_builder:action_item_detail' item.id %}">{{ item.title }}</a></td><td>{{ item.due_at|date:"d.m.Y" }}</td><td>{{ item.get_status_display }}</td></tr>
+    {% empty %}<tr><td colspan="3">Keine ueberfaelligen Massnahmen.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+<section class="surface">
+  <h3>Versandfehler</h3>
+  <table class="data-table"><thead><tr><th>Formular</th><th>Empfaenger</th><th>Fehler</th></tr></thead><tbody>
+    {% for item in operational_dashboard.failed_outbox %}
+      <tr><td>{{ item.form.title }}</td><td>{{ item.recipient.email }}</td><td>{{ item.last_error_message|truncatechars:120 }}</td></tr>
+    {% empty %}<tr><td colspan="3">Keine Versandfehler.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+<section class="surface">
+  <h3>Aktuelle Audit-Ereignisse</h3>
+  <table class="data-table"><thead><tr><th>Zeit</th><th>Aktion</th><th>Objekt</th></tr></thead><tbody>
+    {% for event in operational_dashboard.recent_audit_events %}
+      <tr><td>{{ event.occurred_at|date:"d.m.Y H:i" }}</td><td>{{ event.get_event_type_display }}</td><td>{{ event.message }}</td></tr>
+    {% empty %}<tr><td colspan="3">Keine Ereignisse.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endblock %}
