@@ -1,0 +1,31 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="page-intro">
+  <div>
+    <p class="eyebrow">Vorlagenbibliothek</p>
+    <h2>Professionelle Formularvorlagen</h2>
+    <p>Wiederverwendbare Startpunkte fuer digitale Verwaltungs- und Wohnbereichsprozesse.</p>
+  </div>
+  {% if can_manage_settings %}<a class="button" href="{% url 'form_builder:form_template_create' %}">Vorlage anlegen</a>{% endif %}
+</section>
+<section class="surface clean-panel">
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead><tr><th>Vorlage</th><th>Kategorie</th><th>Sprache</th><th>Status</th><th class="table-action">Aktion</th></tr></thead>
+      <tbody>
+        {% for template in templates %}
+          <tr>
+            <td><strong>{{ template.title }}</strong><small>{{ template.description|default:template.key }}</small></td>
+            <td>{{ template.category|default:"-" }}</td>
+            <td>{{ template.language|upper }}</td>
+            <td><span class="badge {% if template.status == 'active' %}success{% endif %}">{{ template.get_status_display }}</span></td>
+            <td class="table-action"><a class="button compact ghost" href="{% url 'form_builder:form_template_detail' template.id %}">Oeffnen</a></td>
+          </tr>
+        {% empty %}
+          <tr><td class="empty-cell" colspan="5">Noch keine Vorlagen. Seed-Kommando ausfuehren: <code>python manage.py seed_starter_templates</code></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -9,9 +9,15 @@ class Command(BaseCommand):
     help = "Apply or dry-run retention policy for archived form entries."
 
     def add_arguments(self, parser):
-        parser.add_argument("--apply", action="store_true", help="Actually anonymize eligible entry data.")
-        parser.add_argument("--dry-run", action="store_true", help="Explicit dry-run mode; writes nothing.")
-        parser.add_argument("--limit", type=int, default=None, help="Maximum number of archive records to process.")
+        parser.add_argument(
+            "--apply", action="store_true", help="Actually anonymize eligible entry data."
+        )
+        parser.add_argument(
+            "--dry-run", action="store_true", help="Explicit dry-run mode; writes nothing."
+        )
+        parser.add_argument(
+            "--limit", type=int, default=None, help="Maximum number of archive records to process."
+        )
 
     def handle(self, *args, **options):
         if options["apply"] and options["dry_run"]:

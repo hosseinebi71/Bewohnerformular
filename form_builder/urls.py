@@ -31,6 +31,11 @@ from .excel_import_views import (
     excel_import_mapping_view,
     excel_import_upload_view,
 )
+from .form_template_views import (
+    form_template_create_view,
+    form_template_detail_view,
+    form_template_list_view,
+)
 from .pdf_template_views import (
     pdf_template_activate_view,
     pdf_template_detail_view,
@@ -216,6 +221,17 @@ urlpatterns = [
         "einstellungen/qr-codes/<uuid:context_id>/deaktivieren/",
         qr_context_deactivate_view,
         name="qr_context_deactivate",
+    ),
+    path("einstellungen/formularvorlagen/", form_template_list_view, name="form_template_list"),
+    path(
+        "einstellungen/formularvorlagen/neu/",
+        form_template_create_view,
+        name="form_template_create",
+    ),
+    path(
+        "einstellungen/formularvorlagen/<uuid:template_id>/",
+        form_template_detail_view,
+        name="form_template_detail",
     ),
     path("einstellungen/docx-vorlagen/", docx_template_list_view, name="docx_template_list"),
     path(

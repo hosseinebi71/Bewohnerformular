@@ -6,11 +6,7 @@ from django.utils import timezone
 
 from form_builder.audit_services import audit_download, audit_permission_denied
 from form_builder.models import AuditLog, Bewohner, Form, FormEntry, PDFDocument, SentFormArchive
-from form_builder.permissions import (
-    can_apply_retention_policy,
-    can_export_entries,
-    can_view_entry,
-)
+from form_builder.permissions import can_apply_retention_policy, can_export_entries, can_view_entry
 from form_builder.retention_services import apply_retention_policy
 
 

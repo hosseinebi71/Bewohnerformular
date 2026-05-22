@@ -47,7 +47,9 @@ def retention_due_queryset(*, as_of=None):
     )
 
 
-def retention_candidates(*, as_of=None, limit: int | None = None) -> tuple[int, list[SentFormArchive]]:
+def retention_candidates(
+    *, as_of=None, limit: int | None = None
+) -> tuple[int, list[SentFormArchive]]:
     queryset = retention_due_queryset(as_of=as_of)
     scanned = queryset.count()
     candidates: list[SentFormArchive] = []
@@ -95,7 +97,9 @@ def apply_retention_policy(
             entry.validation_errors = _redacted_entry_payload(entry)
             entry.status = FormEntry.EntryStatus.DELETED
             entry.updated_by = actor if getattr(actor, "is_authenticated", False) else None
-            entry.save(update_fields=["data", "validation_errors", "status", "updated_by", "updated_at"])
+            entry.save(
+                update_fields=["data", "validation_errors", "status", "updated_by", "updated_at"]
+            )
 
             metadata = dict(archive.archive_metadata or {})
             metadata["retention"] = {
@@ -118,10 +122,14 @@ def apply_retention_policy(
                 form_entry=archive.form_entry,
                 message="Aufbewahrungsfrist wurde verarbeitet; Eintragsdaten wurden anonymisiert.",
                 metadata={
-                    "retention_until": archive.retention_until.isoformat() if archive.retention_until else None,
+                    "retention_until": (
+                        archive.retention_until.isoformat() if archive.retention_until else None
+                    ),
                     "mode": "anonymized_entry_data",
                     "previous_entry_status": previous_status,
                 },
             )
             processed += 1
-    return RetentionResult(scanned=scanned, eligible=len(candidates), processed=processed, dry_run=False)
+    return RetentionResult(
+        scanned=scanned, eligible=len(candidates), processed=processed, dry_run=False
+    )

@@ -1,0 +1,40 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="page-intro">
+  <div>
+    <p class="eyebrow">Formularvorlage</p>
+    <h2>{{ template.title }}</h2>
+    <p>{{ template.description }}</p>
+  </div>
+  <a class="button ghost" href="{% url 'form_builder:form_template_list' %}">Zurueck</a>
+</section>
+<div class="split-grid">
+  <section class="panel">
+    <h3>Metadaten</h3>
+    <dl class="definition-list">
+      <div><dt>Key</dt><dd>{{ template.key }} v{{ template.version }}</dd></div>
+      <div><dt>Kategorie</dt><dd>{{ template.category|default:"-" }}</dd></div>
+      <div><dt>Tags</dt><dd>{{ template.tags|join:", "|default:"-" }}</dd></div>
+      <div><dt>Status</dt><dd>{{ template.get_status_display }}</dd></div>
+    </dl>
+  </section>
+  <section class="panel">
+    <h3>Als Formular erstellen</h3>
+    {% if can_manage_settings %}
+      <form method="post" class="compact-form">
+        {% csrf_token %}
+        {% for field in copy_form %}
+          <div class="field-row"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}</div>
+        {% endfor %}
+        <div class="actionbar"><button class="button" type="submit">Editierbaren Entwurf erstellen</button></div>
+      </form>
+    {% else %}
+      <p class="empty">Du hast keine Berechtigung zum Kopieren von Vorlagen.</p>
+    {% endif %}
+  </section>
+</div>
+<section class="panel" style="margin-top:18px">
+  <h3>Definition</h3>
+  <pre style="white-space:pre-wrap;overflow:auto">{{ template.definition }}</pre>
+</section>
+{% endblock %}

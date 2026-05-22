@@ -1,0 +1,11 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="page-intro"><div><p class="eyebrow">Vorlagenbibliothek</p><h2>Formularvorlage anlegen</h2></div></section>
+<form method="post" class="surface compact-form">
+  {% csrf_token %}
+  {% for field in template_form %}
+    <div class="field-row"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}</div>
+  {% endfor %}
+  <div class="actionbar"><a class="button ghost" href="{% url 'form_builder:form_template_list' %}">Abbrechen</a><button class="button" type="submit">Speichern</button></div>
+</form>
+{% endblock %}
