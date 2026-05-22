@@ -1,0 +1,33 @@
+{% load form_builder_extras %}
+<tr data-repeatable-row>
+  {% for column in group.columns %}
+    <td>
+      {% if column.field_type == "textarea" %}
+        <textarea name="repeatable__{{ group.key }}__{{ row_index }}__{{ column.key }}" rows="2" placeholder="{{ column.placeholder }}">{{ row|get_item:column.key }}</textarea>
+      {% elif column.field_type == "boolean" %}
+        <input type="checkbox" name="repeatable__{{ group.key }}__{{ row_index }}__{{ column.key }}" value="1" {% if row|get_item:column.key %}checked{% endif %}>
+      {% elif column.field_type == "date" %}
+        <input type="date" name="repeatable__{{ group.key }}__{{ row_index }}__{{ column.key }}" value="{{ row|get_item:column.key }}">
+      {% elif column.field_type == "integer" or column.field_type == "decimal" %}
+        <input type="number" name="repeatable__{{ group.key }}__{{ row_index }}__{{ column.key }}" value="{{ row|get_item:column.key }}" placeholder="{{ column.placeholder }}">
+      {% elif column.field_type == "select" %}
+        <select name="repeatable__{{ group.key }}__{{ row_index }}__{{ column.key }}">
+          <option value="">Bitte auswählen</option>
+          {% for choice in column.choices %}
+            <option value="{{ choice.value }}" {% if row|get_item:column.key == choice.value %}selected{% endif %}>{{ choice.label }}</option>
+          {% endfor %}
+        </select>
+      {% elif column.field_type == "file" %}
+        <input type="file" name="repeatable__{{ group.key }}__{{ row_index }}__{{ column.key }}" accept="{{ column.ui_config.accept|default:'image/*' }}" {% if column.ui_config.capture %}capture="{{ column.ui_config.capture }}"{% endif %}>
+        {% with existing=row|get_item:column.key %}{% if existing.filename %}<small>{{ existing.filename }}</small>{% endif %}{% endwith %}
+      {% else %}
+        <input type="text" name="repeatable__{{ group.key }}__{{ row_index }}__{{ column.key }}" value="{{ row|get_item:column.key }}" placeholder="{{ column.placeholder }}">
+      {% endif %}
+      {% if column.help_text %}<small>{{ column.help_text }}</small>{% endif %}
+    </td>
+  {% endfor %}
+  <td>
+    <input type="hidden" name="__repeatable_{{ group.key }}_{{ row_index }}_delete" value="0" data-repeatable-delete>
+    <button class="button ghost compact" type="button" data-repeatable-remove>Entfernen</button>
+  </td>
+</tr>

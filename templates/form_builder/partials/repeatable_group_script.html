@@ -1,0 +1,40 @@
+<script>
+(function(){
+  document.querySelectorAll('[data-repeatable-group]').forEach(function(group){
+    const body = group.querySelector('[data-repeatable-body]');
+    const count = group.querySelector('[data-repeatable-count]');
+    const template = group.querySelector('[data-repeatable-template]');
+    const add = group.querySelector('[data-repeatable-add]');
+    const maxRows = parseInt(group.dataset.maxRows || '0', 10);
+
+    function visibleRows(){
+      return Array.from(body.querySelectorAll('[data-repeatable-row]')).filter(function(row){ return row.style.display !== 'none'; });
+    }
+    function wire(row){
+      const remove = row.querySelector('[data-repeatable-remove]');
+      if(remove){
+        remove.addEventListener('click', function(){
+          const marker = row.querySelector('[data-repeatable-delete]');
+          if(marker){ marker.value = '1'; }
+          row.style.display = 'none';
+        });
+      }
+    }
+    body.querySelectorAll('[data-repeatable-row]').forEach(wire);
+    if(add){
+      add.addEventListener('click', function(){
+        const current = visibleRows().length;
+        if(maxRows && current >= maxRows){ return; }
+        const index = parseInt(count.value || '0', 10);
+        const html = template.innerHTML.replaceAll('__INDEX__', String(index));
+        const tmp = document.createElement('tbody');
+        tmp.innerHTML = html;
+        const row = tmp.querySelector('[data-repeatable-row]');
+        body.appendChild(row);
+        count.value = String(index + 1);
+        wire(row);
+      });
+    }
+  });
+})();
+</script>

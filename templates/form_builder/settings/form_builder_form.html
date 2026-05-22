@@ -1,0 +1,57 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface panel">
+  <div class="panel-head">
+    <div><p class="eyebrow">Formular-Builder</p><h2>{{ page_title }}</h2></div>
+    <a class="button ghost" href="{% url 'form_builder:form_builder_list' %}">Zurück</a>
+  </div>
+  <form method="post" class="form-panel">
+    {% csrf_token %}
+    {{ builder_form.as_p }}
+    {% if not is_locked %}<div class="actionbar"><button class="button" type="submit">Metadaten speichern</button></div>{% endif %}
+  </form>
+</section>
+{% if form_definition %}
+<section class="surface panel">
+  <div class="panel-head">
+    <div><p class="eyebrow">Struktur</p><h2>Abschnitte, Felder und Tabellen</h2></div>
+    {% if not is_locked %}
+      <div class="title-actions">
+        <a class="button ghost" href="{% url 'form_builder:form_section_create' form_definition.id %}">Abschnitt</a>
+        <a class="button ghost" href="{% url 'form_builder:form_field_create' form_definition.id %}">Feld</a>
+        <a class="button" href="{% url 'form_builder:repeatable_group_create' form_definition.id %}">Wiederholbare Tabelle</a>
+      </div>
+    {% endif %}
+  </div>
+  {% if is_locked %}<p class="info">Dieses Formular ist veröffentlicht und im Builder schreibgeschützt.</p>{% endif %}
+  <h3>Abschnitte</h3>
+  <table class="data-table"><thead><tr><th>Reihenfolge</th><th>Titel</th><th>Felder</th><th>Aktion</th></tr></thead><tbody>
+    {% for section in sections %}
+      <tr><td>{{ section.position }}</td><td>{{ section.title }}</td><td>{{ section.fields.count }}</td><td><a class="link" href="{% url 'form_builder:form_section_edit' section.id %}">Bearbeiten</a></td></tr>
+    {% empty %}<tr><td colspan="4">Keine Abschnitte.</td></tr>{% endfor %}
+  </tbody></table>
+  <h3>Felder ohne Abschnitt</h3>
+  <table class="data-table"><thead><tr><th>Reihenfolge</th><th>Label</th><th>Typ</th><th>Aktion</th></tr></thead><tbody>
+    {% for field in unsectioned_fields %}
+      <tr><td>{{ field.position }}</td><td>{{ field.label }}</td><td>{{ field.get_field_type_display }}</td><td><a class="link" href="{% url 'form_builder:form_field_edit' field.id %}">Bearbeiten</a></td></tr>
+    {% empty %}<tr><td colspan="4">Keine unsectioned Felder.</td></tr>{% endfor %}
+  </tbody></table>
+  <h3>Wiederholbare Tabellen</h3>
+  <table class="data-table"><thead><tr><th>Reihenfolge</th><th>Titel</th><th>Zeilen</th><th>Spalten</th><th>Aktion</th></tr></thead><tbody>
+    {% for group in form_definition.repeatable_groups.all %}
+      <tr>
+        <td>{{ group.position }}</td><td>{{ group.title }}</td><td>{{ group.min_rows }}–{{ group.max_rows }}</td><td>{{ group.columns.count }}</td>
+        <td>
+          <a class="link" href="{% url 'form_builder:repeatable_group_edit' group.id %}">Bearbeiten</a>
+          {% if not is_locked %}
+            <form method="post" action="{% url 'form_builder:repeatable_group_reorder' group.id 'up' %}" style="display:inline">{% csrf_token %}<button class="link-button" type="submit">↑</button></form>
+            <form method="post" action="{% url 'form_builder:repeatable_group_reorder' group.id 'down' %}" style="display:inline">{% csrf_token %}<button class="link-button" type="submit">↓</button></form>
+            <form method="post" action="{% url 'form_builder:repeatable_group_delete' group.id %}" style="display:inline" onsubmit="return confirm('Tabelle löschen?');">{% csrf_token %}<input type="hidden" name="confirm" value="1"><button class="link-button danger" type="submit">Löschen</button></form>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}<tr><td colspan="5">Noch keine wiederholbaren Tabellen.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endif %}
+{% endblock %}

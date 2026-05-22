@@ -1,0 +1,42 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Formular-Builder</p>
+      <h2>{{ page_title }}</h2>
+      <p>{{ form_definition.title }}</p>
+    </div>
+    <a class="button ghost" href="{% url 'form_builder:form_builder_edit' form_definition.id %}">Zurück</a>
+  </div>
+  <form method="post" class="form-panel">
+    {% csrf_token %}
+    {{ builder_form.as_p }}
+    <div class="actionbar"><button class="button" type="submit">Speichern</button></div>
+  </form>
+</section>
+{% if group %}
+<section class="surface panel">
+  <div class="panel-head">
+    <div><p class="eyebrow">Spalten</p><h2>{{ group.title }}</h2></div>
+    <a class="button" href="{% url 'form_builder:repeatable_column_create' group.id %}">Spalte hinzufügen</a>
+  </div>
+  <table class="data-table">
+    <thead><tr><th>Reihenfolge</th><th>Label</th><th>Typ</th><th>Pflicht</th><th>Aktion</th></tr></thead>
+    <tbody>
+      {% for column in columns %}
+        <tr>
+          <td>{{ column.position }}</td><td>{{ column.label }}</td><td>{{ column.get_column_type_display }}</td><td>{{ column.required|yesno:"Ja,Nein" }}</td>
+          <td>
+            <a class="link" href="{% url 'form_builder:repeatable_column_edit' column.id %}">Bearbeiten</a>
+            <form method="post" action="{% url 'form_builder:repeatable_column_reorder' column.id 'up' %}" style="display:inline">{% csrf_token %}<button class="link-button" type="submit">↑</button></form>
+            <form method="post" action="{% url 'form_builder:repeatable_column_reorder' column.id 'down' %}" style="display:inline">{% csrf_token %}<button class="link-button" type="submit">↓</button></form>
+            <form method="post" action="{% url 'form_builder:repeatable_column_delete' column.id %}" style="display:inline" onsubmit="return confirm('Spalte löschen?');">{% csrf_token %}<input type="hidden" name="confirm" value="1"><button class="link-button danger" type="submit">Löschen</button></form>
+          </td>
+        </tr>
+      {% empty %}<tr><td colspan="5">Noch keine Spalten.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

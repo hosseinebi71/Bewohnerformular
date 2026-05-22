@@ -52,14 +52,18 @@ def calculate_sha256(uploaded_file) -> str:
             uploaded_file.seek(0)
         except Exception:
             position = None
-    for chunk in uploaded_file.chunks() if hasattr(uploaded_file, "chunks") else [uploaded_file.read()]:
+    for chunk in (
+        uploaded_file.chunks() if hasattr(uploaded_file, "chunks") else [uploaded_file.read()]
+    ):
         digest.update(chunk)
     if position is not None:
         uploaded_file.seek(position)
     return digest.hexdigest()
 
 
-def validate_uploaded_file(uploaded_file, *, field_definition: dict | None = None, signature: bool = False) -> None:
+def validate_uploaded_file(
+    uploaded_file, *, field_definition: dict | None = None, signature: bool = False
+) -> None:
     field_definition = field_definition or {}
     rules = field_definition.get("validation_rules") or {}
     filename = getattr(uploaded_file, "name", "Datei")
@@ -67,7 +71,9 @@ def validate_uploaded_file(uploaded_file, *, field_definition: dict | None = Non
     max_size = SIGNATURE_MAX_SIZE if signature else int(rules.get("max_size_bytes") or 0)
     if not max_size:
         max_size_mb = rules.get("max_size_mb")
-        max_size = int(float(max_size_mb) * 1024 * 1024) if max_size_mb else DEFAULT_MAX_ATTACHMENT_SIZE
+        max_size = (
+            int(float(max_size_mb) * 1024 * 1024) if max_size_mb else DEFAULT_MAX_ATTACHMENT_SIZE
+        )
     if size > max_size:
         raise ValidationError(
             f"{filename}: Die Datei ist zu gross. Maximal erlaubt sind {max_size // (1024 * 1024)} MB."
@@ -102,7 +108,9 @@ class FormEntryAttachment(UUIDPrimaryKeyModel, TimeStampedModel):
         related_name="entry_attachments",
     )
     field_key = models.SlugField(max_length=80, db_index=True)
-    kind = models.CharField(max_length=24, choices=AttachmentKind.choices, default=AttachmentKind.FILE)
+    kind = models.CharField(
+        max_length=24, choices=AttachmentKind.choices, default=AttachmentKind.FILE
+    )
     original_filename = models.CharField(max_length=255)
     file = models.FileField(upload_to=form_entry_attachment_upload_to, max_length=500)
     content_type = models.CharField(max_length=120)

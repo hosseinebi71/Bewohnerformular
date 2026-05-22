@@ -11,7 +11,10 @@ import form_builder.attachment_models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("form_builder", "0009_rename_form_builde_section_7406d6_idx_form_builde_section_adedc7_idx_and_more"),
+        (
+            "form_builder",
+            "0009_rename_form_builde_section_7406d6_idx_form_builde_section_adedc7_idx_and_more",
+        ),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -23,7 +26,9 @@ class Migration(migrations.Migration):
                 ("updated_at", models.DateTimeField(auto_now=True)),
                 (
                     "id",
-                    models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
                 ),
                 ("field_key", models.SlugField(db_index=True, max_length=80)),
                 (
@@ -106,7 +111,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="formentryattachment",
-            index=models.Index(fields=["entry", "field_key", "deleted_at"], name="form_builde_entry_i_91c1f7_idx"),
+            index=models.Index(
+                fields=["entry", "field_key", "deleted_at"], name="form_builde_entry_i_91c1f7_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="formentryattachment",
@@ -114,6 +121,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="formentryattachment",
-            index=models.Index(fields=["uploaded_by", "created_at"], name="form_builde_uploade_a1cfd8_idx"),
+            index=models.Index(
+                fields=["uploaded_by", "created_at"], name="form_builde_uploade_a1cfd8_idx"
+            ),
         ),
     ]

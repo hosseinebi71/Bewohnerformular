@@ -7,8 +7,11 @@ from django.urls import reverse
 
 from form_builder.attachment_models import FormEntryAttachment
 from form_builder.models import Bewohner, Field, Form, FormEntry
-from form_builder.services import build_entry_form, create_form_entry_from_validated, submit_draft_for_review
-
+from form_builder.services import (
+    build_entry_form,
+    create_form_entry_from_validated,
+    submit_draft_for_review,
+)
 
 PNG_1X1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
@@ -146,5 +149,7 @@ class AttachmentAndSignatureTests(TestCase):
         )
         attachment = FormEntryAttachment.objects.get(entry=entry, field_key="photo")
         self.client.force_login(self.other)
-        response = self.client.get(reverse("form_builder:attachment_download", args=[attachment.pk]))
+        response = self.client.get(
+            reverse("form_builder:attachment_download", args=[attachment.pk])
+        )
         self.assertEqual(response.status_code, 403)

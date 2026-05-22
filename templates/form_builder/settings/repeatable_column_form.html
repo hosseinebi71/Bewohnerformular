@@ -1,0 +1,18 @@
+{% extends "form_builder/base.html" %}
+{% block content %}
+<section class="surface panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Tabellenspalte</p>
+      <h2>{{ page_title }}</h2>
+      <p>{{ group.title }}</p>
+    </div>
+    <a class="button ghost" href="{% url 'form_builder:repeatable_group_edit' group.id %}">Zurück</a>
+  </div>
+  <form method="post" class="form-panel">
+    {% csrf_token %}
+    {{ column_form.as_p }}
+    <div class="actionbar"><button class="button" type="submit">Speichern</button></div>
+  </form>
+</section>
+{% endblock %}

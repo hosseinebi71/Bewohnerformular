@@ -21,7 +21,7 @@
     {% else %}
       {% include "form_builder/partials/entry_form_fields.html" %}
     {% endif %}
-    {% include "form_builder/partials/entry_attachment_list.html" with attachments=attachments editable=True %}
+    {% if attachments %}{% include "form_builder/partials/entry_attachment_list.html" %}{% endif %}
     <div class="actionbar sticky-actions">
       <span class="save-hint">Vorschau öffnet die aktuellen Eingaben im neuen Tab. Versand ist erst nach Freigabe möglich.</span>
       <button class="button ghost" formaction="{% url 'form_builder:entry_pdf_live_preview' form_entry.id %}" formmethod="post" formtarget="_blank" formnovalidate type="submit">Vorschau</button>
@@ -33,4 +33,5 @@
 {% endblock %}
 {% block scripts %}
 {% include "form_builder/partials/signature_pad_script.html" %}
+{% include "form_builder/partials/repeatable_group_script.html" %}
 {% endblock %}

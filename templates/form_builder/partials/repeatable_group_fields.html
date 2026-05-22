@@ -1,0 +1,32 @@
+{% for group in entry_form.schema.repeatable_groups %}
+<section class="form-section repeatable-group" data-repeatable-group="{{ group.key }}" data-min-rows="{{ group.min_rows }}" data-max-rows="{{ group.max_rows }}">
+  <div class="repeatable-group__header">
+    <div>
+      <h3 class="form-section-title">{{ group.title }}</h3>
+      {% if group.description %}<p class="form-section-description">{{ group.description }}</p>{% endif %}
+    </div>
+    <button class="button ghost compact" type="button" data-repeatable-add>Zeile hinzufügen</button>
+  </div>
+  <input type="hidden" name="__repeatable_{{ group.key }}_row_count" value="{% if group.rows %}{{ group.rows|length }}{% else %}1{% endif %}" data-repeatable-count>
+  <div class="repeatable-table-wrap">
+    <table class="repeatable-table">
+      <thead>
+        <tr>
+          {% for column in group.columns %}<th>{{ column.label }}{% if column.required %}<span>*</span>{% endif %}</th>{% endfor %}
+          <th>Aktion</th>
+        </tr>
+      </thead>
+      <tbody data-repeatable-body>
+        {% for row in group.rows %}
+          {% include "form_builder/partials/repeatable_group_row.html" with group=group row=row row_index=forloop.counter0 %}
+        {% empty %}
+          {% include "form_builder/partials/repeatable_group_row.html" with group=group row=None row_index=0 %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <template data-repeatable-template>
+    {% include "form_builder/partials/repeatable_group_row.html" with group=group row=None row_index="__INDEX__" %}
+  </template>
+</section>
+{% endfor %}

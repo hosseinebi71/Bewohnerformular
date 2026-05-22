@@ -1,3 +1,4 @@
+{% load form_builder_extras %}
 {% for group in entry_form.sectioned_bound_field_groups %}
   {% if group.section %}
     <fieldset class="form-section{% if group.section.is_collapsible %} is-collapsible{% endif %}">
@@ -27,3 +28,4 @@
     </div>
   {% endif %}
 {% endfor %}
+{% include "form_builder/partials/repeatable_group_fields.html" %}

@@ -1,6 +1,17 @@
 from django.urls import path
 
-from .attachment_entry_views import (
+from .attachment_views import attachment_delete_view, attachment_download_view
+from .repeatable_builder_views import (
+    repeatable_column_create_view,
+    repeatable_column_delete_view,
+    repeatable_column_edit_view,
+    repeatable_column_reorder_view,
+    repeatable_group_create_view,
+    repeatable_group_delete_view,
+    repeatable_group_edit_view,
+    repeatable_group_reorder_view,
+)
+from .repeatable_entry_views import (
     entry_create_view,
     entry_detail_view,
     entry_edit_view,
@@ -8,7 +19,6 @@ from .attachment_entry_views import (
     entry_save_view,
     entry_validate_view,
 )
-from .attachment_views import attachment_delete_view, attachment_download_view
 from .views import (
     archive_list_view,
     dashboard_view,
@@ -164,6 +174,46 @@ urlpatterns = [
         "einstellungen/form-builder/felder/<uuid:field_id>/<str:direction>/",
         form_field_reorder_view,
         name="form_field_reorder",
+    ),
+    path(
+        "einstellungen/form-builder/<uuid:form_id>/tabellen/neu/",
+        repeatable_group_create_view,
+        name="repeatable_group_create",
+    ),
+    path(
+        "einstellungen/form-builder/tabellen/<uuid:group_id>/bearbeiten/",
+        repeatable_group_edit_view,
+        name="repeatable_group_edit",
+    ),
+    path(
+        "einstellungen/form-builder/tabellen/<uuid:group_id>/loeschen/",
+        repeatable_group_delete_view,
+        name="repeatable_group_delete",
+    ),
+    path(
+        "einstellungen/form-builder/tabellen/<uuid:group_id>/<str:direction>/",
+        repeatable_group_reorder_view,
+        name="repeatable_group_reorder",
+    ),
+    path(
+        "einstellungen/form-builder/tabellen/<uuid:group_id>/spalten/neu/",
+        repeatable_column_create_view,
+        name="repeatable_column_create",
+    ),
+    path(
+        "einstellungen/form-builder/tabellen/spalten/<uuid:column_id>/bearbeiten/",
+        repeatable_column_edit_view,
+        name="repeatable_column_edit",
+    ),
+    path(
+        "einstellungen/form-builder/tabellen/spalten/<uuid:column_id>/loeschen/",
+        repeatable_column_delete_view,
+        name="repeatable_column_delete",
+    ),
+    path(
+        "einstellungen/form-builder/tabellen/spalten/<uuid:column_id>/<str:direction>/",
+        repeatable_column_reorder_view,
+        name="repeatable_column_reorder",
     ),
     path("einstellungen/email/", email_target_list_view, name="email_target_list"),
     path("einstellungen/email/neu/", email_target_create_view, name="email_target_create"),

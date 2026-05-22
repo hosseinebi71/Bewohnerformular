@@ -78,8 +78,7 @@ def attachment_delete_view(request, attachment_id):
     data = dict(entry.data or {})
     current_value = data.get(attachment.field_key)
     if (
-        isinstance(current_value, dict)
-        and current_value.get("attachment_id") == str(attachment.pk)
+        isinstance(current_value, dict) and current_value.get("attachment_id") == str(attachment.pk)
     ) or not isinstance(current_value, dict):
         data.pop(attachment.field_key, None)
         FormEntry.objects.filter(pk=entry.pk).update(data=data)

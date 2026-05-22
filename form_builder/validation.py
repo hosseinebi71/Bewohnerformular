@@ -10,7 +10,6 @@ from django.core.validators import RegexValidator
 
 from .models import Field
 
-
 """
 Developer note: field validation_rules format
 ============================================
@@ -92,20 +91,14 @@ def _to_decimal(value: Any, *, rule_name: str) -> Decimal | None:
     try:
         return Decimal(str(value))
     except (InvalidOperation, TypeError, ValueError) as exc:
-        raise ValidationError(
-            {"validation_rules": f"{rule_name} muss eine Zahl sein."}
-        ) from exc
+        raise ValidationError({"validation_rules": f"{rule_name} muss eine Zahl sein."}) from exc
 
 
 def _validate_no_unknown_rules(rules: dict) -> None:
     unknown = sorted(set(rules) - ALLOWED_VALIDATION_RULE_KEYS)
     if unknown:
         raise ValidationError(
-            {
-                "validation_rules": (
-                    "Unbekannte Validierungsregel(n): " + ", ".join(unknown)
-                )
-            }
+            {"validation_rules": ("Unbekannte Validierungsregel(n): " + ", ".join(unknown))}
         )
 
 
@@ -138,11 +131,7 @@ def validate_field_validation_rules(field: Field) -> None:
         raise ValidationError({"validation_rules": "max_digits muss groesser als 0 sein."})
     if decimal_places is not None and decimal_places < 0:
         raise ValidationError({"validation_rules": "decimal_places darf nicht negativ sein."})
-    if (
-        max_digits is not None
-        and decimal_places is not None
-        and decimal_places > max_digits
-    ):
+    if max_digits is not None and decimal_places is not None and decimal_places > max_digits:
         raise ValidationError(
             {"validation_rules": "decimal_places darf nicht groesser als max_digits sein."}
         )
@@ -150,9 +139,7 @@ def validate_field_validation_rules(field: Field) -> None:
     regex = rules.get("regex")
     if regex:
         if field.field_type not in TEXT_LIKE_FIELD_TYPES:
-            raise ValidationError(
-                {"validation_rules": "regex ist nur fuer Textfelder erlaubt."}
-            )
+            raise ValidationError({"validation_rules": "regex ist nur fuer Textfelder erlaubt."})
         try:
             re.compile(str(regex))
         except re.error as exc:
@@ -160,11 +147,15 @@ def validate_field_validation_rules(field: Field) -> None:
                 {"validation_rules": f"Ungueltiger regulaerer Ausdruck: {exc}"}
             ) from exc
 
-    if (min_length is not None or max_length is not None) and field.field_type not in TEXT_LIKE_FIELD_TYPES:
+    if (
+        min_length is not None or max_length is not None
+    ) and field.field_type not in TEXT_LIKE_FIELD_TYPES:
         raise ValidationError(
             {"validation_rules": "Laengenregeln sind nur fuer Textfelder erlaubt."}
         )
-    if (min_value is not None or max_value is not None) and field.field_type not in NUMERIC_FIELD_TYPES:
+    if (
+        min_value is not None or max_value is not None
+    ) and field.field_type not in NUMERIC_FIELD_TYPES:
         raise ValidationError(
             {"validation_rules": "Wertbereiche sind nur fuer Zahlenfelder erlaubt."}
         )
