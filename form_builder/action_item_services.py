@@ -42,10 +42,7 @@ class ReminderProcessingResult:
     @property
     def total(self) -> int:
         return (
-            self.action_due_soon
-            + self.action_overdue
-            + self.action_escalated
-            + self.review_overdue
+            self.action_due_soon + self.action_overdue + self.action_escalated + self.review_overdue
         )
 
     def summary_de(self) -> str:
@@ -106,10 +103,20 @@ def _parse_due_at(value: Any):
         return value if timezone.is_aware(value) else timezone.make_aware(value)
     parsed_datetime = parse_datetime(str(value))
     if parsed_datetime:
-        return parsed_datetime if timezone.is_aware(parsed_datetime) else timezone.make_aware(parsed_datetime)
+        return (
+            parsed_datetime
+            if timezone.is_aware(parsed_datetime)
+            else timezone.make_aware(parsed_datetime)
+        )
     parsed_date = parse_date(str(value))
     if parsed_date:
-        return timezone.make_aware(datetime.combine(parsed_date, time(hour=17, minute=0)))
+        # Store date-only deadlines around noon in the active timezone.
+        # Midnight deadlines shift to the previous UTC day in Europe/Berlin,
+        # which makes date-based reporting and tests confusing.
+        return timezone.make_aware(
+            datetime.combine(parsed_date, time(hour=12, minute=0)),
+            timezone.get_current_timezone(),
+        )
     return None
 
 
@@ -117,7 +124,9 @@ def _field_model_for_entry(form_entry: FormEntry, field_key: str):
     return Field.objects.filter(form=form_entry.form, key=field_key).first()
 
 
-def _audit_action_item(*, actor, item: ActionItem, event_type: str, message: str, metadata=None) -> None:
+def _audit_action_item(
+    *, actor, item: ActionItem, event_type: str, message: str, metadata=None
+) -> None:
     AuditLog.objects.create(
         actor=actor,
         event_type=event_type,
@@ -155,7 +164,9 @@ def _simple_rule_context(form_entry: FormEntry, rule: ActionItemRule, value: Any
     }
 
 
-def _row_context(form_entry: FormEntry, rule: ActionItemRule, row: dict, row_index: int, value: Any) -> dict:
+def _row_context(
+    form_entry: FormEntry, rule: ActionItemRule, row: dict, row_index: int, value: Any
+) -> dict:
     return {
         "form": form_entry.form.title,
         "form_key": form_entry.form.key,
@@ -190,7 +201,9 @@ def _upsert_action_item(
     metadata: dict | None = None,
 ) -> tuple[ActionItem, bool, bool]:
     source_rule_key = f"rule:{rule.pk}"
-    source_field = _field_model_for_entry(form_entry, source_field_key) if source_field_key else None
+    source_field = (
+        _field_model_for_entry(form_entry, source_field_key) if source_field_key else None
+    )
     defaults = {
         "source_field": source_field,
         "source_group_key": source_group_key,
@@ -215,7 +228,15 @@ def _upsert_action_item(
     updated = False
     if not created and item.status not in CLOSED_ACTION_STATUSES:
         changed_fields = []
-        for attr in ["title", "description", "assigned_to", "assigned_to_label", "due_at", "priority", "metadata"]:
+        for attr in [
+            "title",
+            "description",
+            "assigned_to",
+            "assigned_to_label",
+            "due_at",
+            "priority",
+            "metadata",
+        ]:
             value = defaults[attr]
             if getattr(item, attr) != value:
                 setattr(item, attr, value)
@@ -268,10 +289,16 @@ def sync_action_items_for_entry(*, form_entry: FormEntry, user=None) -> ActionIt
                         continue
                     context = _row_context(form_entry, rule, row, row_index, value)
                     title = _safe_format(rule.title_template, context)
-                    description = _safe_format(rule.description_template, context) or context.get(
-                        "massnahme"
-                    ) or context.get("beschreibung")
-                    due_at = _parse_due_at(row.get(rule.due_at_field_key)) if rule.due_at_field_key else None
+                    description = (
+                        _safe_format(rule.description_template, context)
+                        or context.get("massnahme")
+                        or context.get("beschreibung")
+                    )
+                    due_at = (
+                        _parse_due_at(row.get(rule.due_at_field_key))
+                        if rule.due_at_field_key
+                        else None
+                    )
                     assigned_to_label = str(row.get(rule.assigned_to_field_key, "") or "")
                     _item, was_created, was_updated = _upsert_action_item(
                         form_entry=form_entry,
@@ -298,7 +325,11 @@ def sync_action_items_for_entry(*, form_entry: FormEntry, user=None) -> ActionIt
                 description = _safe_format(rule.description_template, context) or context.get(
                     "beschreibung"
                 )
-                due_at = _parse_due_at(data.get(rule.due_at_field_key)) if rule.due_at_field_key else None
+                due_at = (
+                    _parse_due_at(data.get(rule.due_at_field_key))
+                    if rule.due_at_field_key
+                    else None
+                )
                 assigned_to_label = str(data.get(rule.assigned_to_field_key, "") or "")
                 _item, was_created, was_updated = _upsert_action_item(
                     form_entry=form_entry,
@@ -422,21 +453,26 @@ def _create_review_reminder(*, entry: FormEntry, kind: str, now, metadata: dict)
 
 
 def process_reminders(
-    *, due_soon_days: int = DEFAULT_DUE_SOON_DAYS, escalate_after_days: int = DEFAULT_ESCALATE_AFTER_DAYS
+    *,
+    due_soon_days: int = DEFAULT_DUE_SOON_DAYS,
+    escalate_after_days: int = DEFAULT_ESCALATE_AFTER_DAYS,
 ) -> ReminderProcessingResult:
     """Generate deduplicated reminder audit events for tasks and pending reviews."""
     now = timezone.now()
     due_soon = overdue = escalated = review_overdue = 0
-    open_items = ActionItem.objects.select_related("source_entry", "source_entry__form", "source_entry__bewohner").filter(
-        status__in=[ActionItem.Status.OPEN, ActionItem.Status.IN_PROGRESS]
-    )
+    open_items = ActionItem.objects.select_related(
+        "source_entry", "source_entry__form", "source_entry__bewohner"
+    ).filter(status__in=[ActionItem.Status.OPEN, ActionItem.Status.IN_PROGRESS])
     due_soon_limit = now + timedelta(days=due_soon_days)
     for item in open_items.filter(due_at__isnull=False, due_at__gt=now, due_at__lte=due_soon_limit):
         if _create_action_reminder(
             item=item,
             kind=ActionItemReminderLog.ReminderKind.DUE_SOON,
             now=now,
-            metadata={"due_at": item.due_at.isoformat(), "assigned_to": str(item.assigned_to_id or "")},
+            metadata={
+                "due_at": item.due_at.isoformat(),
+                "assigned_to": str(item.assigned_to_id or ""),
+            },
         ):
             due_soon += 1
     for item in open_items.filter(due_at__isnull=False, due_at__lte=now):
@@ -444,7 +480,10 @@ def process_reminders(
             item=item,
             kind=ActionItemReminderLog.ReminderKind.OVERDUE,
             now=now,
-            metadata={"due_at": item.due_at.isoformat(), "assigned_to": str(item.assigned_to_id or "")},
+            metadata={
+                "due_at": item.due_at.isoformat(),
+                "assigned_to": str(item.assigned_to_id or ""),
+            },
         ):
             overdue += 1
         if item.due_at <= now - timedelta(days=escalate_after_days):
@@ -452,7 +491,10 @@ def process_reminders(
                 item=item,
                 kind=ActionItemReminderLog.ReminderKind.ESCALATION,
                 now=now,
-                metadata={"due_at": item.due_at.isoformat(), "escalate_after_days": escalate_after_days},
+                metadata={
+                    "due_at": item.due_at.isoformat(),
+                    "escalate_after_days": escalate_after_days,
+                },
             ):
                 escalated += 1
     review_cutoff = now - timedelta(days=DEFAULT_REVIEW_OVERDUE_DAYS)

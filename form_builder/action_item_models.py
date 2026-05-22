@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from .models import Field, Form, FormEntry, TimeStampedModel, UUIDPrimaryKeyModel, UserStampedModel
+from .models import Field, Form, FormEntry, TimeStampedModel, UserStampedModel, UUIDPrimaryKeyModel
 
 
 class ActionItem(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
@@ -56,7 +56,9 @@ class ActionItem(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
     )
     due_at = models.DateTimeField(null=True, blank=True, db_index=True)
     priority = models.CharField(max_length=16, choices=Priority.choices, default=Priority.NORMAL)
-    status = models.CharField(max_length=24, choices=Status.choices, default=Status.OPEN, db_index=True)
+    status = models.CharField(
+        max_length=24, choices=Status.choices, default=Status.OPEN, db_index=True
+    )
     completed_at = models.DateTimeField(null=True, blank=True)
     verified_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -177,8 +179,14 @@ class ActionItemRule(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
         has_simple_source = bool(self.source_field_id or self.source_field_key)
         has_table_source = bool(self.source_group_key and self.source_column_key)
         if has_simple_source == has_table_source:
-            errors["source_field"] = "Bitte entweder ein Formularfeld oder eine Tabellenspalte als Quelle setzen."
-        if self.operator in {self.Operator.EQUALS, self.Operator.NOT_EQUALS, self.Operator.CONTAINS}:
+            errors["source_field"] = (
+                "Bitte entweder ein Formularfeld oder eine Tabellenspalte als Quelle setzen."
+            )
+        if self.operator in {
+            self.Operator.EQUALS,
+            self.Operator.NOT_EQUALS,
+            self.Operator.CONTAINS,
+        }:
             if self.value == "":
                 errors["value"] = "Bitte einen Vergleichswert angeben."
         elif self.value:

@@ -136,7 +136,7 @@ class ActionItemTests(TestCase):
         self.assertEqual(item.source_group_key, "kontrollen")
         self.assertEqual(item.source_row_key, "0")
         self.assertEqual(item.assigned_to_label, "Team A")
-        self.assertEqual(item.due_at.date().isoformat(), "2030-01-15")
+        self.assertEqual(timezone.localdate(item.due_at).isoformat(), "2030-01-15")
 
     def test_reminders_are_deduplicated(self):
         entry = self._entry({"mangel_vorhanden": "yes"})

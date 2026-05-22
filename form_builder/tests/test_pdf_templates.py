@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+from pypdf import PdfReader
 
 from form_builder.models import Bewohner, Field, Form, FormEntry
 from form_builder.pdf_template_models import PDFTemplatePlacement
@@ -153,5 +154,6 @@ class PDFTemplateTests(TestCase):
         )
         pdf_bytes = render_pdf_template_bytes(form_entry=entry, template=template)
         self.assertTrue(pdf_bytes.startswith(b"%PDF"))
-        self.assertGreater(len(pdf_bytes), len(make_pdf_bytes()))
+        reader = PdfReader(BytesIO(pdf_bytes))
+        self.assertEqual(len(reader.pages), 1)
         self.assertIsNotNone(render_from_template_if_available(form_entry=entry))

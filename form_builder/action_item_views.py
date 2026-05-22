@@ -102,7 +102,9 @@ def action_item_update_view(request, item_id):
 def action_rule_list_view(request, form_id):
     require_permission(can_manage_settings(request.user))
     form_definition = get_object_or_404(Form, pk=form_id)
-    rules = ActionItemRule.objects.filter(form=form_definition).select_related("source_field", "assigned_to")
+    rules = ActionItemRule.objects.filter(form=form_definition).select_related(
+        "source_field", "assigned_to"
+    )
     return render(
         request,
         "form_builder/action_items/rule_list.html",
