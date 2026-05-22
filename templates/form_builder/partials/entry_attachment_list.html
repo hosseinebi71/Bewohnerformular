@@ -1,0 +1,26 @@
+{% if attachments %}
+  <div class="attachment-list" style="margin-top: 1rem;">
+    <div class="section-label">Anhänge und Unterschriften</div>
+    <div class="form-grid government-form">
+      {% for attachment in attachments %}
+        <div class="field-row attachment-card">
+          <label>{{ attachment.field_key }} · {{ attachment.get_kind_display }}</label>
+          <a href="{% url 'form_builder:attachment_download' attachment.id %}" target="_blank">{{ attachment.original_filename }}</a>
+          <small>{{ attachment.content_type }} · {{ attachment.size }} Bytes · SHA-256 {{ attachment.sha256|slice:":12" }}…</small>
+          {% if attachment.is_image %}
+            <img src="{% url 'form_builder:attachment_download' attachment.id %}" alt="{{ attachment.original_filename }}" style="max-width: 220px; max-height: 160px; margin-top: .5rem; border-radius: .5rem; border: 1px solid #d8dee9;">
+          {% endif %}
+          {% if attachment.kind == "signature" and attachment.signed_at %}
+            <small>Signiert: {{ attachment.signed_at }} · {{ attachment.signed_by|default:"-" }}</small>
+          {% endif %}
+          {% if editable %}
+            <form method="post" action="{% url 'form_builder:attachment_delete' attachment.id %}" onsubmit="return confirm('Diesen Anhang entfernen?');">
+              {% csrf_token %}
+              <button class="button ghost compact" type="submit">Entfernen</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}

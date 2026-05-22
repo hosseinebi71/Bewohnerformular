@@ -6,7 +6,22 @@
       <div><p class="eyebrow">Vorgang</p><h2>{{ form_entry.form.title }}</h2><p>{{ form_entry.bewohner }}</p></div>
       <span class="badge">{{ form_entry.get_status_display }}</span>
     </div>
-    <dl class="definition-list">{% for row in detail_rows %}<div><dt>{{ row.label }}</dt><dd>{{ row.value }}</dd></div>{% endfor %}</dl>
+    <dl class="definition-list">
+      {% for row in detail_rows %}
+        <div>
+          <dt>{{ row.label }}</dt>
+          <dd>
+            {% if row.attachment %}
+              <a href="{% url 'form_builder:attachment_download' row.attachment.id %}" target="_blank">{{ row.value }}</a>
+              {% if row.attachment.is_image %}<br><img src="{% url 'form_builder:attachment_download' row.attachment.id %}" alt="{{ row.attachment.original_filename }}" style="max-width: 220px; max-height: 160px; margin-top: .5rem; border-radius: .5rem; border: 1px solid #d8dee9;">{% endif %}
+            {% else %}
+              {{ row.value }}
+            {% endif %}
+          </dd>
+        </div>
+      {% endfor %}
+    </dl>
+    {% include "form_builder/partials/entry_attachment_list.html" with attachments=attachments editable=False %}
   </div>
   <aside class="surface panel actions-panel">
     <p class="eyebrow">Aktionen</p>

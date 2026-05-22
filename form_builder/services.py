@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import base64
+import hashlib
 from copy import deepcopy
 from datetime import date, datetime
 from decimal import Decimal
@@ -5,10 +9,12 @@ from uuid import uuid4
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
 from . import pdf_services
+from .attachment_models import FormEntryAttachment, detect_content_type, validate_uploaded_file
 from .models import (
     AuditLog,
     Bewohner,
@@ -28,6 +34,10 @@ FIELD_WIDGETS = {
     Field.FieldType.DATE: forms.DateInput(attrs={"type": "date"}),
     Field.FieldType.DATETIME: forms.DateTimeInput(attrs={"type": "datetime-local"}),
 }
+EDITABLE_ATTACHMENT_STATUSES = {
+    FormEntry.EntryStatus.DRAFT,
+    FormEntry.EntryStatus.REJECTED,
+}
 
 
 class DynamicEntryForm(forms.Form):
@@ -37,10 +47,12 @@ class DynamicEntryForm(forms.Form):
         schema,
         bewohner_queryset=None,
         include_bewohner=False,
+        existing_attachment_keys=None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.schema = schema
+        existing_attachment_keys = existing_attachment_keys or set()
 
         if include_bewohner:
             queryset = bewohner_queryset or Bewohner.objects.order_by(
@@ -57,7 +69,11 @@ class DynamicEntryForm(forms.Form):
             )
 
         for field_definition in schema.get("fields", []):
-            self.fields[field_definition["key"]] = build_form_field(field_definition)
+            key = field_definition["key"]
+            self.fields[key] = build_form_field(
+                field_definition,
+                has_existing_attachment=key in existing_attachment_keys,
+            )
 
     @property
     def sectioned_bound_field_groups(self) -> list[dict]:
@@ -94,32 +110,80 @@ def get_form_schema(form_definition: Form) -> dict:
     return schema
 
 
+def _active_attachment_keys(form_entry: FormEntry) -> set[str]:
+    if not form_entry.pk:
+        return set()
+    return set(
+        FormEntryAttachment.objects.filter(entry=form_entry, deleted_at__isnull=True).values_list(
+            "field_key", flat=True
+        )
+    )
+
+
 def build_entry_form(
     form_definition: Form,
     *,
     data=None,
+    files=None,
     initial=None,
     include_bewohner=False,
 ) -> DynamicEntryForm:
     return DynamicEntryForm(
         data=data,
+        files=files,
         initial=initial,
         schema=get_form_schema(form_definition),
         include_bewohner=include_bewohner,
     )
 
 
-def build_entry_form_for_entry(form_entry: FormEntry, *, data=None) -> DynamicEntryForm:
-    initial = form_entry.data or {}
+def build_entry_form_for_entry(form_entry: FormEntry, *, data=None, files=None) -> DynamicEntryForm:
+    initial = _initial_entry_data(form_entry)
     return DynamicEntryForm(
         data=data,
+        files=files,
         initial=initial,
         schema=form_entry.form_snapshot or get_form_schema(form_entry.form),
         include_bewohner=False,
+        existing_attachment_keys=_active_attachment_keys(form_entry),
     )
 
 
-def build_form_field(field_definition: dict) -> forms.Field:
+def _initial_entry_data(form_entry: FormEntry) -> dict:
+    initial = dict(form_entry.data or {})
+    for key, value in list(initial.items()):
+        if isinstance(value, dict) and value.get("type") == "signature":
+            data_url = get_signature_data_url(value)
+            if data_url:
+                initial[key] = data_url
+    return initial
+
+
+def _file_widget_attrs(field_definition: dict) -> dict:
+    rules = field_definition.get("validation_rules") or {}
+    ui_config = field_definition.get("ui_config") or {}
+    attrs = {}
+    allowed = rules.get("allowed_content_types") or rules.get("content_types") or []
+    accept = ui_config.get("accept") or rules.get("accept")
+    if not accept and allowed:
+        if all(str(item).startswith("image/") for item in allowed):
+            accept = "image/*"
+        else:
+            accept = ",".join(str(item) for item in allowed)
+    if not accept:
+        accept = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+    attrs["accept"] = accept
+    capture = ui_config.get("capture") or rules.get("capture")
+    if capture:
+        attrs["capture"] = capture if capture is not True else "environment"
+    elif accept == "image/*":
+        attrs["capture"] = "environment"
+    return attrs
+
+
+def build_form_field(
+    field_definition: dict, *, has_existing_attachment: bool = False
+) -> forms.Field:
     field_type = field_definition["field_type"]
     required = field_definition.get("required", False)
     label = field_definition.get("label", field_definition["key"])
@@ -151,9 +215,33 @@ def build_form_field(field_definition: dict) -> forms.Field:
         common_kwargs["widget"].attrs.setdefault("placeholder", placeholder)
 
     if field_type == Field.FieldType.TEXT:
-        return forms.CharField(**common_kwargs)
+        max_length = validation_rules.get("max_length")
+        min_length = validation_rules.get("min_length")
+        regex = validation_rules.get("regex")
+        validators = []
+        if regex:
+            from django.core.validators import RegexValidator
+
+            validators.append(
+                RegexValidator(
+                    regex=regex,
+                    message=validation_rules.get(
+                        "regex_message", "Bitte gueltiges Format eingeben."
+                    ),
+                )
+            )
+        return forms.CharField(
+            max_length=max_length,
+            min_length=min_length,
+            validators=validators,
+            **common_kwargs,
+        )
     if field_type == Field.FieldType.TEXTAREA:
-        return forms.CharField(**common_kwargs)
+        return forms.CharField(
+            max_length=validation_rules.get("max_length"),
+            min_length=validation_rules.get("min_length"),
+            **common_kwargs,
+        )
     if field_type == Field.FieldType.INTEGER:
         return forms.IntegerField(
             min_value=validation_rules.get("min_value"),
@@ -194,11 +282,15 @@ def build_form_field(field_definition: dict) -> forms.Field:
     if field_type == Field.FieldType.PHONE:
         return forms.CharField(**common_kwargs)
     if field_type == Field.FieldType.FILE:
-        return forms.CharField(
-            required=False,
+        help_parts = [help_text] if help_text else []
+        rules = field_definition.get("validation_rules") or {}
+        max_size_mb = rules.get("max_size_mb") or 10
+        help_parts.append(f"Maximale Dateigroesse: {max_size_mb} MB.")
+        return forms.FileField(
+            required=bool(required and not has_existing_attachment),
             label=label,
-            help_text="Datei-Uploads sind in diesem lokalen Draft-Flow noch nicht aktiviert.",
-            disabled=True,
+            help_text=" ".join(help_parts),
+            widget=forms.ClearableFileInput(attrs=_file_widget_attrs(field_definition)),
         )
     return forms.CharField(**common_kwargs)
 
@@ -216,11 +308,6 @@ def _text_value(payload: dict, *keys: str) -> str:
 
 
 def ensure_bewohner_from_entry_payload(*, payload: dict, user) -> Bewohner:
-    """Create a resident reference from the form itself.
-
-    The application still stores entries against Bewohner for audit/archive integrity,
-    but the user does not have to choose a pre-existing resident while filling a form.
-    """
     last_name = _text_value(payload, "name", "nachname", "familienname") or "Unbekannt"
     first_name = _text_value(payload, "vorname", "first_name") or ""
     date_of_birth = (
@@ -270,6 +357,7 @@ def create_form_entry_from_validated(
     bewohner: Bewohner | None = None,
     cleaned_data: dict,
     user,
+    uploaded_files=None,
 ) -> FormEntry:
     schema = get_form_schema(form_definition)
     explicit_bewohner = cleaned_data.get("bewohner")
@@ -290,31 +378,58 @@ def create_form_entry_from_validated(
             created_by=user,
             updated_by=user,
         )
+        persist_entry_attachments_and_signatures(
+            form_entry=form_entry,
+            cleaned_data=cleaned_data,
+            uploaded_files=uploaded_files,
+            schema=schema,
+            user=user,
+        )
     return form_entry
 
 
-def save_draft_from_validated(*, form_entry: FormEntry, cleaned_data: dict, user) -> FormEntry:
+def save_draft_from_validated(
+    *, form_entry: FormEntry, cleaned_data: dict, user, uploaded_files=None
+) -> FormEntry:
     schema = form_entry.form_snapshot or get_form_schema(form_entry.form)
-    form_entry.data = serialize_entry_data(cleaned_data, schema)
+    form_entry.data = serialize_entry_data(cleaned_data, schema, existing_data=form_entry.data)
     form_entry.validation_errors = {}
     form_entry.status = FormEntry.EntryStatus.DRAFT
     form_entry.updated_by = user
     form_entry.save(
         update_fields=["data", "validation_errors", "status", "updated_by", "updated_at"]
     )
+    persist_entry_attachments_and_signatures(
+        form_entry=form_entry,
+        cleaned_data=cleaned_data,
+        uploaded_files=uploaded_files,
+        schema=schema,
+        user=user,
+    )
     return form_entry
 
 
-def validate_draft(form_entry: FormEntry, cleaned_data: dict, user) -> FormEntry:
+def validate_draft(
+    form_entry: FormEntry, cleaned_data: dict, user, uploaded_files=None
+) -> FormEntry:
     schema = form_entry.form_snapshot or get_form_schema(form_entry.form)
-    form_entry.data = serialize_entry_data(cleaned_data, schema)
+    form_entry.data = serialize_entry_data(cleaned_data, schema, existing_data=form_entry.data)
     form_entry.validation_errors = {}
     form_entry.updated_by = user
     form_entry.save(update_fields=["data", "validation_errors", "updated_by", "updated_at"])
+    persist_entry_attachments_and_signatures(
+        form_entry=form_entry,
+        cleaned_data=cleaned_data,
+        uploaded_files=uploaded_files,
+        schema=schema,
+        user=user,
+    )
     return form_entry
 
 
-def submit_draft_for_review(form_entry: FormEntry, cleaned_data: dict, user) -> FormEntry:
+def submit_draft_for_review(
+    form_entry: FormEntry, cleaned_data: dict, user, uploaded_files=None
+) -> FormEntry:
     if form_entry.status not in (
         FormEntry.EntryStatus.DRAFT,
         FormEntry.EntryStatus.REJECTED,
@@ -324,7 +439,7 @@ def submit_draft_for_review(form_entry: FormEntry, cleaned_data: dict, user) -> 
         )
 
     schema = form_entry.form_snapshot or get_form_schema(form_entry.form)
-    form_entry.data = serialize_entry_data(cleaned_data, schema)
+    form_entry.data = serialize_entry_data(cleaned_data, schema, existing_data=form_entry.data)
     form_entry.validation_errors = {}
     form_entry.status = FormEntry.EntryStatus.IN_REVIEW
     form_entry.submitted_at = timezone.now()
@@ -338,6 +453,13 @@ def submit_draft_for_review(form_entry: FormEntry, cleaned_data: dict, user) -> 
             "updated_by",
             "updated_at",
         ]
+    )
+    persist_entry_attachments_and_signatures(
+        form_entry=form_entry,
+        cleaned_data=cleaned_data,
+        uploaded_files=uploaded_files,
+        schema=schema,
+        user=user,
     )
     return form_entry
 
@@ -507,12 +629,28 @@ def queue_entry_for_delivery(*, form_entry: FormEntry, user) -> list[OutboxItem]
     return created_items
 
 
-def serialize_entry_data(cleaned_data: dict, schema: dict) -> dict:
+def serialize_entry_data(
+    cleaned_data: dict, schema: dict, *, existing_data: dict | None = None
+) -> dict:
     payload = {}
-    schema_keys = {field_definition["key"] for field_definition in schema.get("fields", [])}
-    for key, value in cleaned_data.items():
-        if key in schema_keys:
-            payload[key] = serialize_value(value)
+    existing_data = existing_data or {}
+    field_definitions = {
+        field_definition["key"]: field_definition for field_definition in schema.get("fields", [])
+    }
+    for key, field_definition in field_definitions.items():
+        if key not in cleaned_data:
+            if key in existing_data:
+                payload[key] = existing_data[key]
+            continue
+        if field_definition.get("field_type") == Field.FieldType.FILE:
+            if key in existing_data:
+                payload[key] = existing_data[key]
+            continue
+        value = cleaned_data.get(key)
+        if _is_signature_field(field_definition) and value in (None, "") and key in existing_data:
+            payload[key] = existing_data[key]
+            continue
+        payload[key] = serialize_value(value)
     return payload
 
 
@@ -526,3 +664,238 @@ def serialize_value(value):
     if isinstance(value, list):
         return [serialize_value(item) for item in value]
     return value
+
+
+def _is_signature_field(field_definition: dict) -> bool:
+    return (field_definition.get("ui_config") or {}).get("widget") == "signature"
+
+
+def _field_model_for(form_entry: FormEntry, field_definition: dict):
+    field_id = field_definition.get("id")
+    if field_id:
+        try:
+            return Field.objects.get(pk=field_id, form=form_entry.form)
+        except Field.DoesNotExist:
+            return None
+    return Field.objects.filter(form=form_entry.form, key=field_definition.get("key")).first()
+
+
+def _uploaded_file_for(uploaded_files, key: str):
+    if not uploaded_files:
+        return None
+    if hasattr(uploaded_files, "get"):
+        return uploaded_files.get(key)
+    return None
+
+
+def _replace_existing_attachments(
+    *, form_entry: FormEntry, field_key: str, user, kind: str
+) -> None:
+    for attachment in FormEntryAttachment.objects.filter(
+        entry=form_entry,
+        field_key=field_key,
+        kind=kind,
+        deleted_at__isnull=True,
+    ):
+        attachment.mark_deleted(user=user)
+
+
+def _attachment_payload(attachment: FormEntryAttachment) -> dict:
+    return {
+        "type": attachment.kind,
+        "attachment_id": str(attachment.pk),
+        "filename": attachment.original_filename,
+        "content_type": attachment.content_type,
+        "size": attachment.size,
+        "sha256": attachment.sha256,
+        "uploaded_at": attachment.created_at.isoformat() if attachment.created_at else "",
+    }
+
+
+def persist_entry_attachments_and_signatures(
+    *,
+    form_entry: FormEntry,
+    cleaned_data: dict,
+    uploaded_files=None,
+    schema: dict | None = None,
+    user=None,
+) -> None:
+    if form_entry.status not in EDITABLE_ATTACHMENT_STATUSES:
+        return
+    schema = schema or form_entry.form_snapshot or get_form_schema(form_entry.form)
+    changed = False
+    data = dict(form_entry.data or {})
+    for field_definition in schema.get("fields", []):
+        key = field_definition.get("key")
+        if not key:
+            continue
+        if field_definition.get("field_type") == Field.FieldType.FILE:
+            uploaded_file = _uploaded_file_for(uploaded_files, key)
+            if not uploaded_file:
+                continue
+            validate_uploaded_file(uploaded_file, field_definition=field_definition)
+            _replace_existing_attachments(
+                form_entry=form_entry,
+                field_key=key,
+                user=user,
+                kind=FormEntryAttachment.AttachmentKind.FILE,
+            )
+            sha256 = hashlib.sha256(uploaded_file.read()).hexdigest()
+            uploaded_file.seek(0)
+            attachment = FormEntryAttachment.objects.create(
+                entry=form_entry,
+                field=_field_model_for(form_entry, field_definition),
+                field_key=key,
+                kind=FormEntryAttachment.AttachmentKind.FILE,
+                original_filename=getattr(uploaded_file, "name", "attachment.bin")[:255],
+                file=uploaded_file,
+                content_type=detect_content_type(uploaded_file),
+                size=int(getattr(uploaded_file, "size", 0) or 0),
+                sha256=sha256,
+                uploaded_by=user,
+                metadata={"source": "dynamic_form_field"},
+            )
+            data[key] = _attachment_payload(attachment)
+            changed = True
+            _audit_attachment(
+                actor=user,
+                event_type=AuditLog.EventType.CREATED,
+                form_entry=form_entry,
+                attachment=attachment,
+                message="Dateianhang wurde hochgeladen.",
+            )
+        elif _is_signature_field(field_definition):
+            raw_value = cleaned_data.get(key)
+            if (
+                not raw_value
+                or isinstance(raw_value, dict)
+                or not str(raw_value).startswith("data:image/png;base64,")
+            ):
+                continue
+            attachment = _store_signature_attachment(
+                form_entry=form_entry,
+                field_definition=field_definition,
+                field_key=key,
+                data_url=str(raw_value),
+                user=user,
+            )
+            if attachment:
+                signer = getattr(user, "username", "") if user else "-"
+                signed_at = attachment.signed_at.isoformat() if attachment.signed_at else ""
+                data[key] = (
+                    f"Unterschrieben durch {signer} am {signed_at[:16]} "
+                    f"(SHA-256 {attachment.signature_hash[:12]}...)"
+                )
+                changed = True
+    if changed:
+        FormEntry.objects.filter(pk=form_entry.pk).update(data=data, updated_at=timezone.now())
+        form_entry.data = data
+
+
+def _store_signature_attachment(
+    *,
+    form_entry: FormEntry,
+    field_definition: dict,
+    field_key: str,
+    data_url: str,
+    user=None,
+) -> FormEntryAttachment | None:
+    if not data_url.startswith("data:image/png;base64,"):
+        raise ValidationError("Unterschrift muss als PNG-Daten gespeichert werden.")
+    try:
+        payload = data_url.split(",", 1)[1]
+        binary = base64.b64decode(payload)
+    except Exception as exc:
+        raise ValidationError("Unterschrift konnte nicht gelesen werden.") from exc
+    if not binary:
+        return None
+    signature_hash = hashlib.sha256(binary).hexdigest()
+    existing = FormEntryAttachment.objects.filter(
+        entry=form_entry,
+        field_key=field_key,
+        kind=FormEntryAttachment.AttachmentKind.SIGNATURE,
+        signature_hash=signature_hash,
+        deleted_at__isnull=True,
+    ).first()
+    if existing:
+        return existing
+    _replace_existing_attachments(
+        form_entry=form_entry,
+        field_key=field_key,
+        user=user,
+        kind=FormEntryAttachment.AttachmentKind.SIGNATURE,
+    )
+    content = ContentFile(binary, name=f"signature_{field_key}.png")
+    validate_uploaded_file(content, field_definition=field_definition, signature=True)
+    now = timezone.now()
+    attachment = FormEntryAttachment.objects.create(
+        entry=form_entry,
+        field=_field_model_for(form_entry, field_definition),
+        field_key=field_key,
+        kind=FormEntryAttachment.AttachmentKind.SIGNATURE,
+        original_filename=f"signature_{field_key}.png",
+        file=content,
+        content_type="image/png",
+        size=len(binary),
+        sha256=signature_hash,
+        uploaded_by=user,
+        signed_by=user,
+        signed_at=now,
+        signature_hash=signature_hash,
+        metadata={
+            "source": "signature_pad",
+            "field_label": field_definition.get("label", field_key),
+        },
+    )
+    _audit_attachment(
+        actor=user,
+        event_type=AuditLog.EventType.CREATED,
+        form_entry=form_entry,
+        attachment=attachment,
+        message="Unterschrift wurde gespeichert.",
+    )
+    return attachment
+
+
+def _audit_attachment(
+    *, actor, event_type, form_entry: FormEntry, attachment: FormEntryAttachment, message: str
+) -> None:
+    AuditLog.objects.create(
+        actor=actor,
+        event_type=event_type,
+        target_model="FormEntryAttachment",
+        target_id=attachment.pk,
+        bewohner=form_entry.bewohner,
+        form=form_entry.form,
+        form_entry=form_entry,
+        message=message,
+        metadata={
+            "attachment_id": str(attachment.pk),
+            "field_key": attachment.field_key,
+            "kind": attachment.kind,
+            "sha256": attachment.sha256,
+        },
+    )
+
+
+def get_entry_attachments(form_entry: FormEntry):
+    return FormEntryAttachment.objects.filter(entry=form_entry, deleted_at__isnull=True).order_by(
+        "field_key", "created_at"
+    )
+
+
+def get_signature_data_url(value: dict | str | None) -> str:
+    if isinstance(value, str) and value.startswith("data:image/"):
+        return value
+    if not isinstance(value, dict):
+        return ""
+    attachment_id = value.get("attachment_id")
+    if not attachment_id:
+        return ""
+    try:
+        attachment = FormEntryAttachment.objects.get(pk=attachment_id, deleted_at__isnull=True)
+        with attachment.file.open("rb") as fh:
+            payload = base64.b64encode(fh.read()).decode("ascii")
+        return f"data:{attachment.content_type};base64,{payload}"
+    except Exception:
+        return ""

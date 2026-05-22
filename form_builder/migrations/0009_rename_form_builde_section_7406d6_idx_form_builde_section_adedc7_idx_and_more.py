@@ -4,20 +4,19 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('form_builder', '0008_formsection_field_section'),
+        ("form_builder", "0008_formsection_field_section"),
     ]
 
     operations = [
         migrations.RenameIndex(
-            model_name='field',
-            new_name='form_builde_section_adedc7_idx',
-            old_name='form_builde_section_7406d6_idx',
+            model_name="field",
+            new_name="form_builde_section_adedc7_idx",
+            old_name="form_builde_section_7406d6_idx",
         ),
         migrations.RenameIndex(
-            model_name='formsection',
-            new_name='form_builde_form_id_48d117_idx',
-            old_name='form_builde_form_id_9f5d8d_idx',
+            model_name="formsection",
+            new_name="form_builde_form_id_48d117_idx",
+            old_name="form_builde_form_id_9f5d8d_idx",
         ),
     ]

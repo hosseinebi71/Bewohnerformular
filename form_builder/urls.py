@@ -1,5 +1,14 @@
 from django.urls import path
 
+from .attachment_entry_views import (
+    entry_create_view,
+    entry_detail_view,
+    entry_edit_view,
+    entry_review_view,
+    entry_save_view,
+    entry_validate_view,
+)
+from .attachment_views import attachment_delete_view, attachment_download_view
 from .views import (
     archive_list_view,
     dashboard_view,
@@ -8,19 +17,13 @@ from .views import (
     email_target_edit_view,
     email_target_list_view,
     entry_approve_view,
-    entry_create_view,
-    entry_detail_view,
-    entry_edit_view,
     entry_pdf_generate_view,
     entry_pdf_live_preview_view,
     entry_pdf_new_live_preview_view,
     entry_pdf_preview_view,
     entry_queue_view,
     entry_reject_view,
-    entry_review_view,
-    entry_save_view,
     entry_send_now_view,
-    entry_validate_view,
     form_blank_pdf_view,
     form_builder_create_view,
     form_builder_edit_view,
@@ -97,6 +100,16 @@ urlpatterns = [
         name="entry_pdf_generate",
     ),
     path("dokumente/pdf/<uuid:pdf_id>/", pdf_download_view, name="pdf_download"),
+    path(
+        "dokumente/anhang/<uuid:attachment_id>/",
+        attachment_download_view,
+        name="attachment_download",
+    ),
+    path(
+        "dokumente/anhang/<uuid:attachment_id>/loeschen/",
+        attachment_delete_view,
+        name="attachment_delete",
+    ),
     path("formulare/entwuerfe/", draft_list_view, name="draft_list"),
     path("formulare/review/", review_list_view, name="review_list"),
     path("formulare/ausgangskorb/", outbox_list_view, name="outbox_list"),

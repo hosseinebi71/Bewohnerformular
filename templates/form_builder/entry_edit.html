@@ -13,7 +13,7 @@
     </div>
   </div>
 
-  <form id="entry-editor" class="surface form-panel" method="post" action="{% url 'form_builder:entry_save' form_entry.id %}">
+  <form id="entry-editor" class="surface form-panel" method="post" action="{% url 'form_builder:entry_save' form_entry.id %}" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="section-label">Formulardaten bearbeiten</div>
     {% if form_entry.form.key == "meldung-besonderes-vorkommnis" %}
@@ -21,6 +21,7 @@
     {% else %}
       {% include "form_builder/partials/entry_form_fields.html" %}
     {% endif %}
+    {% include "form_builder/partials/entry_attachment_list.html" with attachments=attachments editable=True %}
     <div class="actionbar sticky-actions">
       <span class="save-hint">Vorschau öffnet die aktuellen Eingaben im neuen Tab. Versand ist erst nach Freigabe möglich.</span>
       <button class="button ghost" formaction="{% url 'form_builder:entry_pdf_live_preview' form_entry.id %}" formmethod="post" formtarget="_blank" formnovalidate type="submit">Vorschau</button>
