@@ -11,7 +11,9 @@ from form_builder.models import Field, Form
 class FormTemplateLibraryTests(TestCase):
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user("admin", password="test", is_staff=True, is_superuser=True)
+        self.user = User.objects.create_user(
+            "admin", password="test", is_staff=True, is_superuser=True
+        )
 
     def test_seed_starter_templates_is_idempotent(self):
         call_command("seed_starter_templates", verbosity=0)

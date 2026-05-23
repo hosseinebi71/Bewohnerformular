@@ -172,7 +172,6 @@ X_FRAME_OPTIONS = "DENY"
 # mounted as static/public content. Download access goes through permission-checked views.
 _DEFAULT_STORAGE = {
     "BACKEND": "django.core.files.storage.FileSystemStorage",
-    "OPTIONS": {"location": str(PRIVATE_MEDIA_ROOT)},
 }
 
 # Static files storage: manifest in production, plain storage in development/tests.

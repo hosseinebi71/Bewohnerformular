@@ -10,7 +10,11 @@ class Command(BaseCommand):
     help = "Seed professional German starter form templates idempotently."
 
     def add_arguments(self, parser):
-        parser.add_argument("--retire-missing", action="store_true", help="Retire active templates not present in the seed list.")
+        parser.add_argument(
+            "--retire-missing",
+            action="store_true",
+            help="Retire active templates not present in the seed list.",
+        )
 
     def handle(self, *args, **options):
         created = 0

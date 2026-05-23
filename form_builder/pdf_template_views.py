@@ -10,7 +10,12 @@ from .models import AuditLog
 from .pdf_template_forms import PDFTemplatePlacementForm, PDFTemplateUploadForm
 from .pdf_template_models import PDFTemplate, PDFTemplatePlacement
 from .pdf_template_services import create_pdf_template_from_upload
-from .permissions import can_manage_settings, can_view_settings
+from .permissions import (
+    can_manage_settings,
+    can_manage_template,
+    can_view_settings,
+    can_view_template,
+)
 from .views import build_app_context
 
 
@@ -22,9 +27,10 @@ def _require(condition: bool):
 @login_required(login_url="login")
 def pdf_template_list_view(request):
     _require(can_view_settings(request.user))
-    templates = PDFTemplate.objects.select_related("form", "created_by").order_by(
+    templates_qs = PDFTemplate.objects.select_related("form", "created_by").order_by(
         "form__title", "-created_at"
     )
+    templates = [template for template in templates_qs if can_view_template(request.user, template)]
     return render(
         request,
         "form_builder/pdf_templates/list.html",
@@ -75,6 +81,7 @@ def pdf_template_upload_view(request):
 def pdf_template_detail_view(request, template_id):
     _require(can_view_settings(request.user))
     template = get_object_or_404(PDFTemplate.objects.select_related("form"), pk=template_id)
+    _require(can_view_template(request.user, template))
     placements = template.placements.select_related("field").order_by(
         "page_number", "field__position", "field__key"
     )
@@ -95,7 +102,8 @@ def pdf_template_detail_view(request, template_id):
 @login_required(login_url="login")
 def pdf_template_file_view(request, template_id):
     _require(can_view_settings(request.user))
-    template = get_object_or_404(PDFTemplate, pk=template_id)
+    template = get_object_or_404(PDFTemplate.objects.select_related("form"), pk=template_id)
+    _require(can_view_template(request.user, template))
     try:
         return FileResponse(
             template.file.open("rb"),
@@ -110,6 +118,7 @@ def pdf_template_file_view(request, template_id):
 def pdf_template_activate_view(request, template_id):
     _require(can_manage_settings(request.user))
     template = get_object_or_404(PDFTemplate.objects.select_related("form"), pk=template_id)
+    _require(can_manage_template(request.user, template))
     if request.method != "POST":
         return redirect("form_builder:pdf_template_detail", template_id=template.pk)
     PDFTemplate.objects.filter(
@@ -136,6 +145,7 @@ def pdf_template_activate_view(request, template_id):
 def pdf_template_placement_create_view(request, template_id):
     _require(can_manage_settings(request.user))
     template = get_object_or_404(PDFTemplate.objects.select_related("form"), pk=template_id)
+    _require(can_manage_template(request.user, template))
     if request.method == "POST":
         form = PDFTemplatePlacementForm(request.POST, template=template)
         if form.is_valid():
@@ -171,6 +181,7 @@ def pdf_template_placement_edit_view(request, placement_id):
         pk=placement_id,
     )
     template = placement.template
+    _require(can_manage_template(request.user, template))
     if request.method == "POST":
         form = PDFTemplatePlacementForm(request.POST, template=template, instance=placement)
         if form.is_valid():
@@ -206,6 +217,7 @@ def pdf_template_placement_delete_view(request, placement_id):
         pk=placement_id,
     )
     template = placement.template
+    _require(can_manage_template(request.user, template))
     if request.method == "POST":
         placement.delete()
         messages.success(request, "Feldplatzierung wurde geloescht.")

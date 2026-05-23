@@ -70,7 +70,7 @@ def _display_value(value: Any) -> str:
         return ""
     if isinstance(value, bool):
         return "Ja" if value else "Nein"
-    if isinstance(value, (date, datetime)):
+    if isinstance(value, date | datetime):
         return value.isoformat()
     if isinstance(value, list):
         return ", ".join(_display_value(item) for item in value)

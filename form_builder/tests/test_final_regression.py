@@ -1,3 +1,5 @@
+import tempfile
+
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -7,11 +9,13 @@ from form_builder.attachment_models import FormEntryAttachment
 from form_builder.models import Bewohner, Field, Form, FormEntry, UserAccessProfile
 
 
-@override_settings(MEDIA_ROOT=None)
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
 class FinalRegressionTests(TestCase):
     def setUp(self):
         User = get_user_model()
-        self.admin = User.objects.create_user("admin", password="test", is_staff=True, is_superuser=True)
+        self.admin = User.objects.create_user(
+            "admin", password="test", is_staff=True, is_superuser=True
+        )
         self.limited = User.objects.create_user("limited", password="test", is_staff=True)
         self.form = Form.objects.create(
             key="regression-form",
@@ -87,10 +91,9 @@ class FinalRegressionTests(TestCase):
             original_filename="note.txt",
             file=upload,
             content_type="text/plain",
-            file_size=5,
+            size=5,
             sha256="0" * 64,
-            created_by=self.admin,
-            updated_by=self.admin,
+            uploaded_by=self.admin,
         )
         UserAccessProfile.objects.create(
             user=self.limited,
@@ -107,5 +110,7 @@ class FinalRegressionTests(TestCase):
             updated_by=self.admin,
         )
         self.client.force_login(self.limited)
-        response = self.client.get(reverse("form_builder:attachment_download", args=[attachment.pk]))
+        response = self.client.get(
+            reverse("form_builder:attachment_download", args=[attachment.pk])
+        )
         self.assertEqual(response.status_code, 403)

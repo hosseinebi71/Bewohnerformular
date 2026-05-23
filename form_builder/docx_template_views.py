@@ -11,16 +11,24 @@ from .docx_template_models import DOCXTemplate
 from .docx_template_services import create_docx_template, generate_docx_document
 from .models import FormEntry
 from .pdf_services import get_pdf_private_path
-from .permissions import can_manage_settings, can_send_entry, can_view_entry, can_view_settings
+from .permissions import (
+    can_manage_settings,
+    can_manage_template,
+    can_send_entry,
+    can_view_entry,
+    can_view_settings,
+    can_view_template,
+)
 from .views import build_app_context, require_permission
 
 
 @login_required(login_url="login")
 def docx_template_list_view(request):
     require_permission(can_view_settings(request.user))
-    templates = DOCXTemplate.objects.select_related("form", "uploaded_by").order_by(
+    templates_qs = DOCXTemplate.objects.select_related("form", "uploaded_by").order_by(
         "form__title", "-created_at"
     )
+    templates = [template for template in templates_qs if can_view_template(request.user, template)]
     return render(
         request,
         "form_builder/docx_templates/list.html",
@@ -78,8 +86,9 @@ def docx_template_detail_view(request, template_id):
     template = get_object_or_404(
         DOCXTemplate.objects.select_related("form", "uploaded_by"), pk=template_id
     )
+    require_permission(can_view_template(request.user, template))
     if request.method == "POST":
-        require_permission(can_manage_settings(request.user))
+        require_permission(can_manage_template(request.user, template))
         form = DOCXTemplateStatusForm(request.POST, instance=template)
         if form.is_valid():
             template = form.save(commit=False)
@@ -109,7 +118,8 @@ def docx_template_detail_view(request, template_id):
 @login_required(login_url="login")
 def docx_template_file_view(request, template_id):
     require_permission(can_view_settings(request.user))
-    template = get_object_or_404(DOCXTemplate, pk=template_id)
+    template = get_object_or_404(DOCXTemplate.objects.select_related("form"), pk=template_id)
+    require_permission(can_view_template(request.user, template))
     return FileResponse(
         template.template_file.open("rb"),
         as_attachment=True,

@@ -8,7 +8,17 @@ from .form_template_models import FormTemplate
 class FormTemplateCreateForm(forms.ModelForm):
     class Meta:
         model = FormTemplate
-        fields = ("key", "version", "title", "category", "description", "language", "tags", "status", "definition")
+        fields = (
+            "key",
+            "version",
+            "title",
+            "category",
+            "description",
+            "language",
+            "tags",
+            "status",
+            "definition",
+        )
         labels = {
             "key": "Vorlagen-Key",
             "version": "Version",

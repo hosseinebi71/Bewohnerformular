@@ -6,7 +6,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .permissions import can_create_entries, can_manage_settings, can_view_settings
+from .permissions import can_create_entries, can_manage_settings, can_view_form, can_view_settings
 from .qr_context_forms import QRFormContextForm
 from .qr_context_models import QRFormContext
 from .qr_context_services import build_qr_open_url, create_entry_from_qr_context, render_qr_png
@@ -16,9 +16,10 @@ from .views import build_app_context, require_permission
 @login_required(login_url="login")
 def qr_context_list_view(request):
     require_permission(can_view_settings(request.user))
-    contexts = QRFormContext.objects.select_related("form", "bewohner", "created_by").order_by(
+    contexts_qs = QRFormContext.objects.select_related("form", "bewohner", "created_by").order_by(
         "-created_at"
     )
+    contexts = [context for context in contexts_qs if can_view_form(request.user, context.form)]
     return render(
         request,
         "form_builder/qr/context_list.html",
@@ -63,6 +64,7 @@ def qr_context_detail_view(request, context_id):
     context = get_object_or_404(
         QRFormContext.objects.select_related("form", "bewohner"), pk=context_id
     )
+    require_permission(can_view_form(request.user, context.form))
     open_url = build_qr_open_url(request, context)
     return render(
         request,
@@ -80,7 +82,8 @@ def qr_context_detail_view(request, context_id):
 @login_required(login_url="login")
 def qr_context_png_view(request, context_id):
     require_permission(can_view_settings(request.user))
-    context = get_object_or_404(QRFormContext, pk=context_id)
+    context = get_object_or_404(QRFormContext.objects.select_related("form"), pk=context_id)
+    require_permission(can_view_form(request.user, context.form))
     png = render_qr_png(build_qr_open_url(request, context))
     response = HttpResponse(png, content_type="image/png")
     response["Content-Disposition"] = f'inline; filename="qr-{context.pk}.png"'
@@ -90,7 +93,8 @@ def qr_context_png_view(request, context_id):
 @login_required(login_url="login")
 def qr_context_deactivate_view(request, context_id):
     require_permission(can_manage_settings(request.user))
-    context = get_object_or_404(QRFormContext, pk=context_id)
+    context = get_object_or_404(QRFormContext.objects.select_related("form"), pk=context_id)
+    require_permission(can_view_form(request.user, context.form))
     if request.method != "POST":
         return redirect("form_builder:qr_context_detail", context_id=context.pk)
     context.is_active = False
@@ -107,6 +111,7 @@ def qr_context_open_view(request, token):
     context = get_object_or_404(
         QRFormContext.objects.select_related("form", "bewohner"), token=token
     )
+    require_permission(can_view_form(request.user, context.form))
     entry = create_entry_from_qr_context(context=context, user=request.user)
     messages.success(request, "QR-Kontext wurde geoeffnet. Bitte Angaben pruefen und speichern.")
     return redirect("form_builder:entry_edit", entry_id=entry.pk)

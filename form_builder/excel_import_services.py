@@ -307,10 +307,10 @@ def _infer_field_type(label: str, sample_values: list[Any]) -> str:
     if non_empty and all(_looks_checkbox(value) for value in non_empty):
         return "checkbox"
     if non_empty and all(
-        isinstance(value, (int, float)) and not isinstance(value, bool) for value in non_empty
+        isinstance(value, int | float) and not isinstance(value, bool) for value in non_empty
     ):
         return "number"
-    if non_empty and all(isinstance(value, (date, datetime)) for value in non_empty):
+    if non_empty and all(isinstance(value, date | datetime) for value in non_empty):
         return "date"
     return "text"
 
@@ -393,7 +393,7 @@ def _detect_date_like_cells(worksheet, bounds: SheetBounds) -> list[dict]:
             cell = worksheet.cell(row, col)
             value = cell.value
             number_format = str(getattr(cell, "number_format", "") or "").lower()
-            if isinstance(value, (date, datetime)) or any(
+            if isinstance(value, date | datetime) or any(
                 hint in number_format for hint in ["yy", "dd", "mm"]
             ):
                 cells.append({"cell": cell.coordinate, "value": _as_text(_cell_value(cell))})

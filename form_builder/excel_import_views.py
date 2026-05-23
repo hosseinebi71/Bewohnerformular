@@ -13,7 +13,7 @@ from .excel_import_services import (
     save_mapping,
 )
 from .navigation import get_navigation_items
-from .permissions import can_manage_settings, can_view_settings
+from .permissions import can_manage_settings, can_view_import_job, can_view_settings
 
 
 def _require(condition: bool):
@@ -33,7 +33,8 @@ def _context(request, *, title: str, current_url_name: str, **extra):
 @login_required(login_url="login")
 def excel_import_list_view(request):
     _require(can_view_settings(request.user))
-    jobs = ImportJob.objects.select_related("uploaded_by").order_by("-created_at")[:100]
+    jobs_qs = ImportJob.objects.select_related("uploaded_by").order_by("-created_at")[:100]
+    jobs = [job for job in jobs_qs if can_view_import_job(request.user, job)]
     return render(
         request,
         "form_builder/excel_import/list.html",
@@ -81,6 +82,7 @@ def excel_import_upload_view(request):
 def excel_import_detail_view(request, job_id):
     _require(can_view_settings(request.user))
     job = get_object_or_404(ImportJob.objects.select_related("uploaded_by"), pk=job_id)
+    _require(can_view_import_job(request.user, job))
     return render(
         request,
         "form_builder/excel_import/detail.html",
@@ -99,6 +101,7 @@ def excel_import_detail_view(request, job_id):
 def excel_import_mapping_view(request, job_id):
     _require(can_manage_settings(request.user))
     job = get_object_or_404(ImportJob, pk=job_id)
+    _require(can_view_import_job(request.user, job) and can_manage_settings(request.user))
     if request.method == "POST":
         form = ExcelMappingForm(request.POST, job=job)
         if form.is_valid():
@@ -126,6 +129,7 @@ def excel_import_mapping_view(request, job_id):
 def excel_import_generate_view(request, job_id):
     _require(can_manage_settings(request.user))
     job = get_object_or_404(ImportJob, pk=job_id)
+    _require(can_view_import_job(request.user, job) and can_manage_settings(request.user))
     if request.method != "POST":
         return redirect("form_builder:excel_import_detail", job_id=job.pk)
     try:

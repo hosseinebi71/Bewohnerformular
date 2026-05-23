@@ -9,8 +9,8 @@ from django.db.models import Max
 from django.utils import timezone
 
 from .audit_services import audit_event
-from .models import AuditLog, Field, Form, FormSection
 from .form_template_models import FormTemplate
+from .models import AuditLog, Field, Form, FormSection
 
 
 def _slugish(value: str, fallback: str) -> str:
@@ -45,7 +45,9 @@ def normalize_template_definition(payload: dict[str, Any]) -> dict[str, Any]:
     return definition
 
 
-def create_template_from_definition(*, key: str, title: str, definition: dict, user=None, **metadata) -> FormTemplate:
+def create_template_from_definition(
+    *, key: str, title: str, definition: dict, user=None, **metadata
+) -> FormTemplate:
     normalized = normalize_template_definition(definition)
     template = FormTemplate.objects.create(
         key=_slugish(key, "formularvorlage"),
@@ -100,7 +102,12 @@ def _field_type(value: str) -> str:
 
 
 def copy_template_to_form(
-    *, template: FormTemplate, user, form_key: str | None = None, title: str | None = None, org_unit: str = ""
+    *,
+    template: FormTemplate,
+    user,
+    form_key: str | None = None,
+    title: str | None = None,
+    org_unit: str = "",
 ) -> TemplateCopyResult:
     if not template.is_active:
         raise ValidationError("Nur aktive Vorlagen koennen kopiert werden.")
@@ -228,8 +235,12 @@ def _copy_repeatable_groups(*, form: Form, definition: dict, user) -> int:
             RepeatableGroupColumn.objects.create(
                 group=group,
                 key=_slugish(column_data.get("key"), f"spalte-{column_index}"),
-                label=column_data.get("label") or column_data.get("key") or f"Spalte {column_index}",
-                column_type=column_data.get("column_type") or column_data.get("field_type") or "text",
+                label=column_data.get("label")
+                or column_data.get("key")
+                or f"Spalte {column_index}",
+                column_type=column_data.get("column_type")
+                or column_data.get("field_type")
+                or "text",
                 position=int(column_data.get("position") or column_index),
                 required=bool(column_data.get("required", False)),
                 choices=_choice_list(column_data.get("choices")),
@@ -269,6 +280,7 @@ def _copy_conditional_rules(*, form: Form, definition: dict, user) -> int:
         )
         count += 1
     return count
+
 
 def _copy_action_item_rules(*, form: Form, definition: dict, user) -> int:
     try:

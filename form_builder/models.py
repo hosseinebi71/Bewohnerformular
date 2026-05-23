@@ -426,7 +426,7 @@ class Field(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
     field_type = models.CharField(max_length=24, choices=FieldType.choices)
     position = models.PositiveIntegerField(
         validators=[MinValueValidator(1)],
-        help_text="Technische Reihenfolge innerhalb des Formulars.",
+        help_text="Technische Reihenfolge innerhalb des Abschnitts oder der ungruppierten Formularfelder.",
     )
     required = models.BooleanField(default=False)
     sensitivity = models.CharField(
@@ -462,8 +462,14 @@ class Field(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
                 name="uniq_field_key_per_form",
             ),
             models.UniqueConstraint(
+                fields=["form", "section", "position"],
+                condition=Q(section__isnull=False),
+                name="uniq_field_position_per_section",
+            ),
+            models.UniqueConstraint(
                 fields=["form", "position"],
-                name="uniq_field_position_per_form",
+                condition=Q(section__isnull=True),
+                name="uniq_unsectioned_field_position_per_form",
             ),
         ]
         indexes = [

@@ -38,7 +38,9 @@ class FormTemplate(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
     class Meta:
         ordering = ["category", "title", "-version"]
         constraints = [
-            models.UniqueConstraint(fields=["key", "version"], name="uniq_form_template_key_version"),
+            models.UniqueConstraint(
+                fields=["key", "version"], name="uniq_form_template_key_version"
+            ),
         ]
         indexes = [
             models.Index(fields=["status", "category"]),
@@ -57,7 +59,9 @@ class FormTemplate(UUIDPrimaryKeyModel, TimeStampedModel, UserStampedModel):
             fields = self.definition.get("fields", [])
             sections = self.definition.get("sections", [])
             if not fields and not sections:
-                errors["definition"] = "Eine Vorlage braucht mindestens ein Feld oder einen Abschnitt."
+                errors["definition"] = (
+                    "Eine Vorlage braucht mindestens ein Feld oder einen Abschnitt."
+                )
         if errors:
             raise ValidationError(errors)
 

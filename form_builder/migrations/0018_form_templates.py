@@ -1,8 +1,9 @@
 # Generated for reusable professional form template library.
+import uuid
+
+import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
-import django.db.models.deletion
-import uuid
 
 
 class Migration(migrations.Migration):
@@ -17,7 +18,12 @@ class Migration(migrations.Migration):
             fields=[
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
+                ),
                 ("key", models.SlugField(max_length=120)),
                 ("version", models.PositiveIntegerField(default=1)),
                 ("title", models.CharField(max_length=255)),
@@ -28,7 +34,11 @@ class Migration(migrations.Migration):
                 (
                     "status",
                     models.CharField(
-                        choices=[("draft", "Entwurf"), ("active", "Aktiv"), ("retired", "Ausgemustert")],
+                        choices=[
+                            ("draft", "Entwurf"),
+                            ("active", "Aktiv"),
+                            ("retired", "Ausgemustert"),
+                        ],
                         db_index=True,
                         default="active",
                         max_length=16,
@@ -70,7 +80,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="formtemplate",
-            constraint=models.UniqueConstraint(fields=("key", "version"), name="uniq_form_template_key_version"),
+            constraint=models.UniqueConstraint(
+                fields=("key", "version"), name="uniq_form_template_key_version"
+            ),
         ),
         migrations.AddIndex(
             model_name="formtemplate",
