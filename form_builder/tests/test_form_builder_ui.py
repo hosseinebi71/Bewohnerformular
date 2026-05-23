@@ -174,3 +174,63 @@ class FormBuilderUITests(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertFalse(FormSection.objects.filter(form=form_definition).exists())
+
+    def test_duplicate_section_position_returns_form_error(self):
+        form_definition = Form.objects.create(key="dup-section", version=1, title="Dup Section")
+        FormSection.objects.create(form=form_definition, title="Existing", position=1)
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("form_builder:form_section_create", args=[form_definition.pk]),
+            {
+                "position": 1,
+                "title": "Duplicate",
+                "description": "",
+                "is_active": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Diese Reihenfolge ist in diesem Formular bereits vergeben.")
+        self.assertEqual(FormSection.objects.filter(form=form_definition).count(), 1)
+
+    def test_published_builder_page_hides_edit_links_and_can_create_draft_version(self):
+        form_definition = Form.objects.create(
+            key="published-copy",
+            version=1,
+            title="Published Copy",
+            status=Form.PublicationStatus.PUBLISHED,
+            published_at=timezone.now(),
+            schema={"fields": []},
+        )
+        section = FormSection.objects.create(form=form_definition, title="Locked", position=1)
+        Field.objects.create(
+            form=form_definition,
+            section=section,
+            key="locked_name",
+            label="Locked Name",
+            field_type=Field.FieldType.TEXT,
+            position=1,
+        )
+        self.client.force_login(self.admin)
+
+        detail_response = self.client.get(
+            reverse("form_builder:form_builder_edit", args=[form_definition.pk])
+        )
+        self.assertContains(detail_response, "Neue Entwurfs-Version")
+        self.assertNotContains(
+            detail_response, reverse("form_builder:form_section_edit", args=[section.pk])
+        )
+
+        create_response = self.client.post(
+            reverse("form_builder:form_builder_create_draft_version", args=[form_definition.pk])
+        )
+        draft = Form.objects.get(key="published-copy", version=2)
+        self.assertRedirects(
+            create_response,
+            reverse("form_builder:form_builder_edit", args=[draft.pk]),
+        )
+        self.assertEqual(draft.status, Form.PublicationStatus.DRAFT)
+        self.assertEqual(draft.supersedes, form_definition)
+        self.assertEqual(draft.sections.count(), 1)
+        self.assertEqual(draft.fields.get().key, "locked_name")

@@ -10,6 +10,8 @@ from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from .action_item_models import ActionItemRule
+from .conditional_models import ConditionalRule
 from .forms import (
     ConfirmDeleteForm,
     FieldBuilderForm,
@@ -52,6 +54,7 @@ from .permissions import (
     can_view_pdf_document,
     can_view_settings,
 )
+from .repeatable_models import RepeatableGroup, RepeatableGroupColumn
 from .schedule_forms import FormScheduleForm
 from .schedule_services import run_due_schedules
 from .selectors import (
@@ -1125,6 +1128,150 @@ def _sync_builder_form(form_definition: Form) -> None:
     form_definition.sync_schema()
 
 
+def _create_draft_version_from_form(source: Form, *, user) -> Form:
+    """Create a safe editable draft version from a locked/published form."""
+    with transaction.atomic():
+        draft = Form.objects.create(
+            key=source.key,
+            version=_next_form_version(source.key),
+            title=source.title,
+            description=source.description,
+            org_unit=source.org_unit,
+            status=Form.PublicationStatus.DRAFT,
+            is_archivable=source.is_archivable,
+            review_required=source.review_required,
+            retention_period_days=source.retention_period_days,
+            supersedes=source,
+            created_by=user,
+            updated_by=user,
+        )
+
+        section_map = {}
+        for old_section in source.sections.order_by("position", "title"):
+            new_section = FormSection.objects.create(
+                form=draft,
+                title=old_section.title,
+                description=old_section.description,
+                position=old_section.position,
+                is_collapsible=old_section.is_collapsible,
+                is_active=old_section.is_active,
+                created_by=user,
+                updated_by=user,
+            )
+            section_map[old_section.pk] = new_section
+
+        field_map = {}
+        for old_field in source.fields.order_by("position", "key"):
+            new_field = Field.objects.create(
+                form=draft,
+                section=section_map.get(old_field.section_id),
+                key=old_field.key,
+                label=old_field.label,
+                help_text=old_field.help_text,
+                field_type=old_field.field_type,
+                position=old_field.position,
+                required=old_field.required,
+                placeholder=old_field.placeholder,
+                choices=old_field.choices,
+                validation_rules=old_field.validation_rules,
+                ui_config=old_field.ui_config,
+                is_active=old_field.is_active,
+                sensitivity=old_field.sensitivity,
+                created_by=user,
+                updated_by=user,
+            )
+            field_map[old_field.pk] = new_field
+
+        group_map = {}
+        for old_group in source.repeatable_groups.order_by("position", "title"):
+            new_group = RepeatableGroup.objects.create(
+                form=draft,
+                section=section_map.get(old_group.section_id),
+                key=old_group.key,
+                title=old_group.title,
+                description=old_group.description,
+                position=old_group.position,
+                min_rows=old_group.min_rows,
+                max_rows=old_group.max_rows,
+                is_active=old_group.is_active,
+                ui_config=old_group.ui_config,
+                created_by=user,
+                updated_by=user,
+            )
+            group_map[old_group.pk] = new_group
+            for old_column in old_group.columns.order_by("position", "key"):
+                RepeatableGroupColumn.objects.create(
+                    group=new_group,
+                    key=old_column.key,
+                    label=old_column.label,
+                    help_text=old_column.help_text,
+                    column_type=old_column.column_type,
+                    position=old_column.position,
+                    required=old_column.required,
+                    placeholder=old_column.placeholder,
+                    choices=old_column.choices,
+                    validation_rules=old_column.validation_rules,
+                    ui_config=old_column.ui_config,
+                    is_active=old_column.is_active,
+                    created_by=user,
+                    updated_by=user,
+                )
+
+        for old_rule in source.conditional_rules.order_by("created_at"):
+            ConditionalRule.objects.create(
+                form=draft,
+                source_field=field_map[old_rule.source_field_id],
+                operator=old_rule.operator,
+                value=old_rule.value,
+                action=old_rule.action,
+                target_field=field_map.get(old_rule.target_field_id),
+                target_section=section_map.get(old_rule.target_section_id),
+                message=old_rule.message,
+                is_active=old_rule.is_active,
+                created_by=user,
+                updated_by=user,
+            )
+
+        for old_rule in source.action_item_rules.order_by("name"):
+            ActionItemRule.objects.create(
+                form=draft,
+                name=old_rule.name,
+                source_field=field_map.get(old_rule.source_field_id),
+                source_field_key=old_rule.source_field_key,
+                source_group_key=old_rule.source_group_key,
+                source_column_key=old_rule.source_column_key,
+                operator=old_rule.operator,
+                value=old_rule.value,
+                title_template=old_rule.title_template,
+                description_template=old_rule.description_template,
+                assigned_to=old_rule.assigned_to,
+                assigned_to_field_key=old_rule.assigned_to_field_key,
+                due_at_field_key=old_rule.due_at_field_key,
+                priority=old_rule.priority,
+                is_active=old_rule.is_active,
+                config=old_rule.config,
+                created_by=user,
+                updated_by=user,
+            )
+
+        draft.sync_schema()
+        return draft
+
+
+@login_required(login_url="login")
+def form_builder_create_draft_version_view(request, form_id):
+    require_permission(can_manage_settings(request.user))
+    source = get_object_or_404(Form, pk=form_id)
+    if request.method != "POST":
+        return redirect("form_builder:form_builder_edit", source.pk)
+    draft = _create_draft_version_from_form(source, user=request.user)
+    messages.success(
+        request,
+        f"Neue bearbeitbare Entwurfs-Version v{draft.version} wurde erstellt.",
+    )
+    return redirect("form_builder:form_builder_edit", draft.pk)
+
+
 @login_required(login_url="login")
 def form_builder_list_view(request):
     require_permission(can_manage_settings(request.user))
@@ -1209,7 +1356,7 @@ def form_section_create_view(request, form_id):
     form_definition = get_object_or_404(Form, pk=form_id)
     _require_form_builder_editable(form_definition)
     if request.method == "POST":
-        section_form = FormSectionBuilderForm(request.POST)
+        section_form = FormSectionBuilderForm(request.POST, form_definition=form_definition)
         section_form.instance.form = form_definition
         if section_form.is_valid():
             section = section_form.save(commit=False)
@@ -1229,7 +1376,8 @@ def form_section_create_view(request, form_id):
             or 0
         ) + 1
         section_form = FormSectionBuilderForm(
-            initial={"position": next_position, "is_active": True}
+            initial={"position": next_position, "is_active": True},
+            form_definition=form_definition,
         )
     context = build_app_context(
         request,
@@ -1248,7 +1396,9 @@ def form_section_edit_view(request, section_id):
     section = get_object_or_404(FormSection.objects.select_related("form"), pk=section_id)
     _require_form_builder_editable(section.form)
     if request.method == "POST":
-        section_form = FormSectionBuilderForm(request.POST, instance=section)
+        section_form = FormSectionBuilderForm(
+            request.POST, instance=section, form_definition=section.form
+        )
         if section_form.is_valid():
             section = section_form.save(commit=False)
             section.updated_by = request.user
@@ -1258,7 +1408,7 @@ def form_section_edit_view(request, section_id):
             return redirect("form_builder:form_builder_edit", section.form_id)
         messages.error(request, "Bitte Eingaben pruefen.")
     else:
-        section_form = FormSectionBuilderForm(instance=section)
+        section_form = FormSectionBuilderForm(instance=section, form_definition=section.form)
     context = build_app_context(
         request,
         title="Abschnitt bearbeiten",

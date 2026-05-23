@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("form_builder", "0018_form_templates"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),

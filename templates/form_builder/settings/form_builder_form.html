@@ -1,57 +1,115 @@
 {% extends "form_builder/base.html" %}
 {% block content %}
-<section class="surface panel">
-  <div class="panel-head">
-    <div><p class="eyebrow">Formular-Builder</p><h2>{{ page_title }}</h2></div>
-    <a class="button ghost" href="{% url 'form_builder:form_builder_list' %}">Zurück</a>
-  </div>
-  <form method="post" class="form-panel">
-    {% csrf_token %}
-    {{ builder_form.as_p }}
-    {% if not is_locked %}<div class="actionbar"><button class="button" type="submit">Metadaten speichern</button></div>{% endif %}
-  </form>
-</section>
-{% if form_definition %}
-<section class="surface panel">
-  <div class="panel-head">
-    <div><p class="eyebrow">Struktur</p><h2>Abschnitte, Felder und Tabellen</h2></div>
-    {% if not is_locked %}
-      <div class="title-actions">
-        <a class="button ghost" href="{% url 'form_builder:form_section_create' form_definition.id %}">Abschnitt</a>
-        <a class="button ghost" href="{% url 'form_builder:form_field_create' form_definition.id %}">Feld</a>
-        <a class="button" href="{% url 'form_builder:repeatable_group_create' form_definition.id %}">Wiederholbare Tabelle</a>
+<section class="settings-layout">
+  <aside class="settings-menu surface">
+    {% include "form_builder/settings/form_builder_menu.html" %}
+  </aside>
+
+  <section class="settings-content">
+    <div class="settings-header surface">
+      <div>
+        <p class="eyebrow">Formular-Builder</p>
+        <h2>{% if mode == 'edit' %}{{ form_definition.title }}{% else %}Formular anlegen{% endif %}</h2>
+        <p>{% if is_locked %}Dieses Formular ist veröffentlicht und im Builder schreibgeschützt.{% else %}Metadaten, Abschnitte und Felder bearbeiten.{% endif %}</p>
       </div>
-    {% endif %}
-  </div>
-  {% if is_locked %}<p class="info">Dieses Formular ist veröffentlicht und im Builder schreibgeschützt.</p>{% endif %}
-  <h3>Abschnitte</h3>
-  <table class="data-table"><thead><tr><th>Reihenfolge</th><th>Titel</th><th>Felder</th><th>Aktion</th></tr></thead><tbody>
-    {% for section in sections %}
-      <tr><td>{{ section.position }}</td><td>{{ section.title }}</td><td>{{ section.fields.count }}</td><td><a class="link" href="{% url 'form_builder:form_section_edit' section.id %}">Bearbeiten</a></td></tr>
-    {% empty %}<tr><td colspan="4">Keine Abschnitte.</td></tr>{% endfor %}
-  </tbody></table>
-  <h3>Felder ohne Abschnitt</h3>
-  <table class="data-table"><thead><tr><th>Reihenfolge</th><th>Label</th><th>Typ</th><th>Aktion</th></tr></thead><tbody>
-    {% for field in unsectioned_fields %}
-      <tr><td>{{ field.position }}</td><td>{{ field.label }}</td><td>{{ field.get_field_type_display }}</td><td><a class="link" href="{% url 'form_builder:form_field_edit' field.id %}">Bearbeiten</a></td></tr>
-    {% empty %}<tr><td colspan="4">Keine unsectioned Felder.</td></tr>{% endfor %}
-  </tbody></table>
-  <h3>Wiederholbare Tabellen</h3>
-  <table class="data-table"><thead><tr><th>Reihenfolge</th><th>Titel</th><th>Zeilen</th><th>Spalten</th><th>Aktion</th></tr></thead><tbody>
-    {% for group in form_definition.repeatable_groups.all %}
-      <tr>
-        <td>{{ group.position }}</td><td>{{ group.title }}</td><td>{{ group.min_rows }}–{{ group.max_rows }}</td><td>{{ group.columns.count }}</td>
-        <td>
-          <a class="link" href="{% url 'form_builder:repeatable_group_edit' group.id %}">Bearbeiten</a>
-          {% if not is_locked %}
-            <form method="post" action="{% url 'form_builder:repeatable_group_reorder' group.id 'up' %}" style="display:inline">{% csrf_token %}<button class="link-button" type="submit">↑</button></form>
-            <form method="post" action="{% url 'form_builder:repeatable_group_reorder' group.id 'down' %}" style="display:inline">{% csrf_token %}<button class="link-button" type="submit">↓</button></form>
-            <form method="post" action="{% url 'form_builder:repeatable_group_delete' group.id %}" style="display:inline" onsubmit="return confirm('Tabelle löschen?');">{% csrf_token %}<input type="hidden" name="confirm" value="1"><button class="link-button danger" type="submit">Löschen</button></form>
+      <div class="button-row">
+        <a class="button ghost compact" href="{% url 'form_builder:form_builder_list' %}">Zur Liste</a>
+        {% if mode == 'edit' %}
+          <a class="button ghost compact" href="{% url 'form_builder:conditional_rule_list' form_definition.pk %}">Regeln</a>
+          <a class="button ghost compact" href="{% url 'form_builder:action_rule_list' form_definition.pk %}">Maßnahmen-Regeln</a>
+          {% if is_locked %}
+            <form method="post" action="{% url 'form_builder:form_builder_create_draft_version' form_definition.pk %}" class="inline-form">{% csrf_token %}<button class="button compact" type="submit">Neue Entwurfs-Version</button></form>
+          {% else %}
+            <a class="button compact" href="{% url 'form_builder:form_section_create' form_definition.pk %}">+ Abschnitt</a>
+            <a class="button ghost compact" href="{% url 'form_builder:form_field_create' form_definition.pk %}">+ Feld</a>
           {% endif %}
-        </td>
-      </tr>
-    {% empty %}<tr><td colspan="5">Noch keine wiederholbaren Tabellen.</td></tr>{% endfor %}
-  </tbody></table>
+        {% endif %}
+      </div>
+    </div>
+
+    <section class="surface form-card builder-panel">
+      <div class="panel-head"><div><p class="eyebrow">Metadaten</p><h3>Formular</h3></div></div>
+      <form class="settings-form compact-form" method="post">
+        {% csrf_token %}
+        <div class="form-two-col">
+          <div class="field-row"><label>{{ builder_form.key.label }}</label>{{ builder_form.key }}{{ builder_form.key.errors }}</div>
+          <div class="field-row"><label>{{ builder_form.version.label }}</label>{{ builder_form.version }}{{ builder_form.version.errors }}</div>
+        </div>
+        <div class="field-row"><label>{{ builder_form.title.label }}</label>{{ builder_form.title }}{{ builder_form.title.errors }}</div>
+        <div class="field-row"><label>{{ builder_form.description.label }}</label>{{ builder_form.description }}{{ builder_form.description.errors }}</div>
+        <div class="form-two-col">
+          <div class="field-row"><label>{{ builder_form.org_unit.label }}</label>{{ builder_form.org_unit }}{{ builder_form.org_unit.errors }}</div>
+          <div class="field-row"><label>{{ builder_form.status.label }}</label>{{ builder_form.status }}{{ builder_form.status.errors }}</div>
+        </div>
+        <div class="form-two-col">
+          <div class="field-row field-row-checks"><label>Workflow</label><span class="inline-checks">{{ builder_form.review_required }} Review {{ builder_form.is_archivable }} Archiv</span></div>
+          <div class="field-row"><label>{{ builder_form.retention_period_days.label }}</label>{{ builder_form.retention_period_days }}{{ builder_form.retention_period_days.errors }}</div>
+        </div>
+        {% if builder_form.non_field_errors %}<div class="message error">{{ builder_form.non_field_errors }}</div>{% endif %}
+        <div class="actionbar">
+          <a class="button ghost" href="{% url 'form_builder:form_builder_list' %}">Zurück</a>
+          {% if not is_locked %}<button class="button" type="submit">Speichern</button>{% endif %}
+        </div>
+      </form>
+    </section>
+
+    {% if mode == 'edit' %}
+    <section class="surface clean-panel builder-panel">
+      {% if is_locked %}
+        <div class="message warning">Dieses Formular ist veröffentlicht. Die Struktur ist schreibgeschützt. Erstelle eine neue Entwurfs-Version, um Felder, Abschnitte oder Tabellen sicher weiterzuentwickeln.</div>
+      {% endif %}
+      <div class="panel-toolbar">
+        <div><h3>Struktur</h3><small>Abschnitte und Felder werden in der Formular-Schema-Struktur gespeichert.</small></div>
+        {% if not is_locked %}<div class="button-row"><a class="link" href="{% url 'form_builder:form_field_create' form_definition.pk %}">Feld ohne Abschnitt hinzufügen</a><a class="link" href="{% url 'form_builder:repeatable_group_create' form_definition.pk %}">+ Wiederholbare Tabelle</a></div>{% endif %}
+      </div>
+
+      {% for section in sections %}
+        <article class="builder-section-card">
+          <header class="builder-section-head">
+            <div><strong>{{ section.position }}. {{ section.title }}</strong>{% if section.description %}<small>{{ section.description }}</small>{% endif %}</div>
+            {% if not is_locked %}
+              <div class="button-row compact-actions">
+                <form method="post" action="{% url 'form_builder:form_section_reorder' section.pk 'up' %}">{% csrf_token %}<button class="button ghost compact" type="submit">↑</button></form>
+                <form method="post" action="{% url 'form_builder:form_section_reorder' section.pk 'down' %}">{% csrf_token %}<button class="button ghost compact" type="submit">↓</button></form>
+                <a class="button ghost compact" href="{% url 'form_builder:form_section_edit' section.pk %}">Bearbeiten</a>
+                <form method="post" action="{% url 'form_builder:form_section_delete' section.pk %}">{% csrf_token %}<button class="button ghost compact danger-link" type="submit">Löschen</button></form>
+              </div>
+            {% endif %}
+          </header>
+          <table class="data-table compact-table builder-fields-table"><tbody>
+            {% for field in section.fields.all|dictsort:'position' %}
+              <tr><td><strong>{{ field.position }}. {{ field.label }}</strong><small>{{ field.key }} · {{ field.get_field_type_display }}{% if field.required %} · Pflicht{% endif %}</small></td><td>{% if field.is_active %}<span class="badge success">Aktiv</span>{% else %}<span class="badge muted">Inaktiv</span>{% endif %}</td><td class="table-action action-stack">{% if not is_locked %}<form method="post" action="{% url 'form_builder:form_field_reorder' field.pk 'up' %}">{% csrf_token %}<button class="button ghost compact" type="submit">↑</button></form><form method="post" action="{% url 'form_builder:form_field_reorder' field.pk 'down' %}">{% csrf_token %}<button class="button ghost compact" type="submit">↓</button></form><a class="button ghost compact" href="{% url 'form_builder:form_field_edit' field.pk %}">Bearbeiten</a><form method="post" action="{% url 'form_builder:form_field_delete' field.pk %}">{% csrf_token %}<button class="button ghost compact danger-link" type="submit">Löschen</button></form>{% endif %}</td></tr>
+            {% empty %}
+              <tr><td colspan="3">Noch keine Felder in diesem Abschnitt.</td></tr>
+            {% endfor %}
+          </tbody></table>
+          {% if not is_locked %}<a class="link" href="{% url 'form_builder:form_field_create' form_definition.pk %}?section={{ section.pk }}">+ Feld in diesem Abschnitt</a>{% endif %}
+        </article>
+      {% endfor %}
+
+      <article class="builder-section-card">
+        <header class="builder-section-head"><div><strong>Felder ohne Abschnitt</strong><small>Diese Felder bleiben global und werden nach den Abschnitten gerendert.</small></div></header>
+        <table class="data-table compact-table builder-fields-table"><tbody>
+          {% for field in unsectioned_fields %}
+            <tr><td><strong>{{ field.position }}. {{ field.label }}</strong><small>{{ field.key }} · {{ field.get_field_type_display }}{% if field.required %} · Pflicht{% endif %}</small></td><td>{% if field.is_active %}<span class="badge success">Aktiv</span>{% else %}<span class="badge muted">Inaktiv</span>{% endif %}</td><td class="table-action action-stack">{% if not is_locked %}<form method="post" action="{% url 'form_builder:form_field_reorder' field.pk 'up' %}">{% csrf_token %}<button class="button ghost compact" type="submit">↑</button></form><form method="post" action="{% url 'form_builder:form_field_reorder' field.pk 'down' %}">{% csrf_token %}<button class="button ghost compact" type="submit">↓</button></form><a class="button ghost compact" href="{% url 'form_builder:form_field_edit' field.pk %}">Bearbeiten</a><form method="post" action="{% url 'form_builder:form_field_delete' field.pk %}">{% csrf_token %}<button class="button ghost compact danger-link" type="submit">Löschen</button></form>{% endif %}</td></tr>
+          {% empty %}
+            <tr><td colspan="3">Keine globalen Felder.</td></tr>
+          {% endfor %}
+        </tbody></table>
+      </article>
+
+      <article class="builder-section-card">
+        <header class="builder-section-head"><div><strong>Wiederholbare Tabellen</strong><small>Tabellen fuer mehrere Zeilen, z. B. Hygiene-Kontrollen oder Maßnahmen.</small></div>{% if not is_locked %}<a class="button ghost compact" href="{% url 'form_builder:repeatable_group_create' form_definition.pk %}">+ Tabelle</a>{% endif %}</header>
+        <table class="data-table compact-table builder-fields-table"><tbody>
+          {% for group in form_definition.repeatable_groups.all %}
+            <tr><td><strong>{{ group.position }}. {{ group.title }}</strong><small>{{ group.key }} · {{ group.min_rows }}–{{ group.max_rows }} Zeilen · {{ group.columns.count }} Spalten</small></td><td>{% if group.is_active %}<span class="badge success">Aktiv</span>{% else %}<span class="badge muted">Inaktiv</span>{% endif %}</td><td class="table-action action-stack"><a class="button ghost compact" href="{% url 'form_builder:repeatable_group_edit' group.pk %}">{% if is_locked %}Ansehen{% else %}Bearbeiten{% endif %}</a>{% if not is_locked %}<form method="post" action="{% url 'form_builder:repeatable_group_reorder' group.pk 'up' %}">{% csrf_token %}<button class="button ghost compact" type="submit">↑</button></form><form method="post" action="{% url 'form_builder:repeatable_group_reorder' group.pk 'down' %}">{% csrf_token %}<button class="button ghost compact" type="submit">↓</button></form><form method="post" action="{% url 'form_builder:repeatable_group_delete' group.pk %}">{% csrf_token %}<input type="hidden" name="confirm" value="1"><button class="button ghost compact danger-link" type="submit">Löschen</button></form>{% endif %}</td></tr>
+          {% empty %}
+            <tr><td colspan="3">Noch keine wiederholbaren Tabellen.</td></tr>
+          {% endfor %}
+        </tbody></table>
+      </article>
+    </section>
+    {% endif %}
+  </section>
 </section>
-{% endif %}
 {% endblock %}

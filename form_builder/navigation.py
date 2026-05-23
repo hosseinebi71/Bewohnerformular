@@ -6,6 +6,14 @@ def get_navigation_items(user, *, current_url_name: str | None = None) -> list[d
         "form_builder:settings_index",
         "form_builder:schedule_list",
         "form_builder:profile",
+        "form_builder:email_target_list",
+        "form_builder:staff_access_list",
+        "form_builder:form_builder_list",
+        "form_builder:excel_import_list",
+        "form_builder:pdf_template_list",
+        "form_builder:docx_template_list",
+        "form_builder:form_template_list",
+        "form_builder:qr_context_list",
     }
     items = [
         {

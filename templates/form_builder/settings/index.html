@@ -2,14 +2,7 @@
 {% block content %}
 <section class="settings-layout">
   <aside class="settings-menu surface">
-    <p class="eyebrow">Einstellungen</p>
-    <a class="active" href="{% url 'form_builder:settings_index' %}">Übersicht</a>
-    <a href="{% url 'form_builder:email_target_list' %}">E-Mail-Ziele</a>
-    <a href="{% url 'form_builder:schedule_list' %}">Zeitpläne</a>
-    <a href="{% url 'form_builder:form_builder_list' %}">Formular-Builder</a>
-    <a href="{% url 'form_builder:staff_access_list' %}">Mitarbeiter</a>
-    <a href="{% url 'form_builder:profile' %}">Profil</a>
-    <a href="/admin/">Admin</a>
+    {% include "form_builder/settings/form_builder_menu.html" %}
   </aside>
 
   <section class="settings-content">
@@ -24,6 +17,9 @@
           <a class="button compact" href="{% url 'form_builder:email_target_create' %}">+ E-Mail</a>
           <a class="button ghost compact" href="{% url 'form_builder:schedule_create' %}">+ Zeitplan</a>
           <a class="button ghost compact" href="{% url 'form_builder:form_builder_create' %}">+ Formular</a>
+          <a class="button ghost compact" href="{% url 'form_builder:excel_import_upload' %}">+ Excel</a>
+          <a class="button ghost compact" href="{% url 'form_builder:pdf_template_upload' %}">+ PDF</a>
+          <a class="button ghost compact" href="{% url 'form_builder:docx_template_upload' %}">+ DOCX</a>
           <a class="button ghost compact" href="{% url 'form_builder:staff_access_create' %}">+ Mitarbeiter</a>
         {% endif %}
       </div>
@@ -33,6 +29,11 @@
       <a class="settings-summary-card surface" href="{% url 'form_builder:email_target_list' %}"><strong>{{ active_recipients }}</strong><span>E-Mail-Ziele</span></a>
       <a class="settings-summary-card surface" href="{% url 'form_builder:schedule_list' %}"><strong>{{ active_schedules }}</strong><span>Zeitpläne</span></a>
       <a class="settings-summary-card surface" href="{% url 'form_builder:form_builder_list' %}"><strong>{{ available_forms }}</strong><span>Formular-Builder</span></a>
+      <a class="settings-summary-card surface" href="{% url 'form_builder:excel_import_list' %}"><strong>Excel</strong><span>Importe</span></a>
+      <a class="settings-summary-card surface" href="{% url 'form_builder:pdf_template_list' %}"><strong>PDF</strong><span>Vorlagen</span></a>
+      <a class="settings-summary-card surface" href="{% url 'form_builder:docx_template_list' %}"><strong>DOCX</strong><span>Vorlagen</span></a>
+      <a class="settings-summary-card surface" href="{% url 'form_builder:form_template_list' %}"><strong>Bibliothek</strong><span>Formularvorlagen</span></a>
+      <a class="settings-summary-card surface" href="{% url 'form_builder:qr_context_list' %}"><strong>QR</strong><span>Kontexte</span></a>
       <a class="settings-summary-card surface" href="{% url 'form_builder:draft_list' %}"><strong>{{ pending_outbox }}</strong><span>Offen</span></a>
     </section>
 

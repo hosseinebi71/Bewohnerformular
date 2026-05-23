@@ -163,6 +163,11 @@ class FormBuilderMetadataForm(forms.ModelForm):
 
 
 class FormSectionBuilderForm(forms.ModelForm):
+    def __init__(self, *args, form_definition: Form | None = None, **kwargs):
+        self.form_definition = form_definition or getattr(kwargs.get("instance"), "form", None)
+        super().__init__(*args, **kwargs)
+        self.fields["is_active"].required = False
+
     class Meta:
         model = FormSection
         fields = ("position", "title", "description", "is_collapsible", "is_active")
@@ -176,6 +181,22 @@ class FormSectionBuilderForm(forms.ModelForm):
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
         }
+
+    def clean_position(self):
+        position = self.cleaned_data.get("position")
+        if not position or not self.form_definition:
+            return position
+        duplicate = FormSection.objects.filter(
+            form=self.form_definition,
+            position=position,
+        )
+        if self.instance.pk:
+            duplicate = duplicate.exclude(pk=self.instance.pk)
+        if duplicate.exists():
+            raise forms.ValidationError(
+                "Diese Reihenfolge ist in diesem Formular bereits vergeben."
+            )
+        return position
 
 
 class FieldBuilderForm(forms.ModelForm):
@@ -245,7 +266,7 @@ class FieldBuilderForm(forms.ModelForm):
         }
         help_texts = {
             "key": "Stabiler Feld-Key ohne Leerzeichen, z. B. kontrollpunkt.",
-            "position": "Globale Reihenfolge innerhalb des Formulars.",
+            "position": "Reihenfolge innerhalb des gewaehlten Abschnitts oder der globalen Felder.",
         }
 
     def __init__(self, *args, form_definition: Form, **kwargs):
@@ -264,8 +285,27 @@ class FieldBuilderForm(forms.ModelForm):
         self.fields["field_type"].initial = self._initial_field_kind()
         self.fields["choices_text"].initial = self._choices_as_text()
 
+    def _selected_section_for_position(self):
+        section_id = (
+            self.data.get("section")
+            if self.is_bound
+            else self.initial.get("section") or getattr(self.instance, "section_id", None)
+        )
+        if not section_id:
+            return None
+        try:
+            return self.form_definition.sections.get(pk=section_id)
+        except (FormSection.DoesNotExist, ValueError, TypeError):
+            return None
+
     def _next_position(self) -> int:
-        positions = list(self.form_definition.fields.values_list("position", flat=True))
+        selected_section = self._selected_section_for_position()
+        fields = self.form_definition.fields.all()
+        if selected_section:
+            fields = fields.filter(section=selected_section)
+        else:
+            fields = fields.filter(section__isnull=True)
+        positions = list(fields.values_list("position", flat=True))
         return (max(positions) + 1) if positions else 1
 
     def _initial_field_kind(self) -> str:
@@ -320,6 +360,22 @@ class FieldBuilderForm(forms.ModelForm):
             self.add_error("choices_text", "Auswahlfelder brauchen mindestens einen Eintrag.")
         if model_field_type not in Field.CHOICE_FIELD_TYPES:
             cleaned["choices_text"] = []
+
+        position = cleaned.get("position")
+        section = cleaned.get("section")
+        if position:
+            duplicate = Field.objects.filter(form=self.form_definition, position=position)
+            if section:
+                duplicate = duplicate.filter(section=section)
+            else:
+                duplicate = duplicate.filter(section__isnull=True)
+            if self.instance.pk:
+                duplicate = duplicate.exclude(pk=self.instance.pk)
+            if duplicate.exists():
+                self.add_error(
+                    "position",
+                    "Diese Reihenfolge ist in diesem Abschnitt bereits vergeben.",
+                )
         return cleaned
 
     def _model_field_type(self, field_kind: str | None) -> str:

@@ -93,6 +93,7 @@ from .views import (
     entry_reject_view,
     entry_send_now_view,
     form_blank_pdf_view,
+    form_builder_create_draft_version_view,
     form_builder_create_view,
     form_builder_edit_view,
     form_builder_list_view,
@@ -312,6 +313,11 @@ urlpatterns = [
         "einstellungen/form-builder/<uuid:form_id>/bearbeiten/",
         form_builder_edit_view,
         name="form_builder_edit",
+    ),
+    path(
+        "einstellungen/form-builder/<uuid:form_id>/entwurfs-version/",
+        form_builder_create_draft_version_view,
+        name="form_builder_create_draft_version",
     ),
     path(
         "einstellungen/form-builder/<uuid:form_id>/regeln/",
